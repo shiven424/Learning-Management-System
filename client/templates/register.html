@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<form method="POST" action="{{ url_for('register') }}">
+    <h2>Register</h2>
+    <label for="username">Username:</label>
+    <input type="text" name="username" id="username" required>
+    <label for="password">Password:</label>
+    <input type="password" name="password" id="password" required>
+    <label for="role">Role:</label>
+    <select name="role" id="role">
+        <option value="student">Student</option>
+        <option value="instructor">Instructor</option>
+    </select>
+    <button type="submit">Register</button>
+</form>
+{% endblock %}

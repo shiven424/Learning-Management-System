@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Assignments</h2>
+<form method="POST" enctype="multipart/form-data">
+    <label for="assignment">Submit Assignment:</label>
+    <input type="file" name="assignment" id="assignment" required>
+    <button type="submit">Submit</button>
+</form>
+<ul>
+    {% for assignment in assignments %}
+    <li>{{ assignment.data }}</li>
+    {% endfor %}
+</ul>
+{% endblock %}

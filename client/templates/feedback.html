@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Feedback</h2>
+<form method="POST">
+    <label for="feedback">Provide Feedback:</label>
+    <input type="text" name="feedback" id="feedback" required>
+    <button type="submit">Submit</button>
+</form>
+<ul>
+    {% for feedback in feedback %}
+    <li>{{ feedback.data }}</li>
+    {% endfor %}
+</ul>
+{% endblock %}

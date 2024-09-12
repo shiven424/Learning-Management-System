@@ -1,6 +1,5 @@
 import grpc
 from concurrent import futures
-import lms_pb2
 import lms_pb2_grpc
 from lms_server import LMSServer
 

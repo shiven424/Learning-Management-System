@@ -7,14 +7,29 @@ services:
       dockerfile: Dockerfile.server
     ports:
       - "50051:50051"
+    depends_on:
+      - mongo
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/lms_db
     container_name: lms_server
 
   lms_client:
     build:
       context: .
       dockerfile: Dockerfile.client
+    ports:
+      - "5000:5000"
     depends_on:
       - lms_server
     container_name: lms_client
-    stdin_open: true
-    tty: true
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    container_name: mongo
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

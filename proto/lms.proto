@@ -3,10 +3,17 @@ syntax = "proto3";
 package lms;
 
 service LMS {
+    rpc Register(RegisterRequest) returns (StatusResponse);
     rpc Login(LoginRequest) returns (LoginResponse);
     rpc Logout(LogoutRequest) returns (StatusResponse);
     rpc Post(PostRequest) returns (StatusResponse);
     rpc Get(GetRequest) returns (GetResponse);
+}
+
+message RegisterRequest {
+    string username = 1;
+    string password = 2;
+    string role = 3;  // student or instructor
 }
 
 message LoginRequest {
@@ -26,7 +33,7 @@ message LogoutRequest {
 message PostRequest {
     string token = 1;
     string type = 2;
-    string data = 3;
+    bytes data = 3;  
 }
 
 message StatusResponse {
