@@ -1,0 +1,20 @@
+# Dockerfile for the server
+FROM python:3.10-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install dependencies and vim
+COPY requirements.txt .
+RUN apt-get update && apt-get install -y vim && rm -rf /var/lib/apt/lists/*
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the server and proto files
+COPY server/ server/
+COPY proto/ proto/
+
+# Compile protobufs
+RUN python -m grpc_tools.protoc -I./proto --python_out=./server --grpc_python_out=./server ./proto/lms.proto
+
+# Run the server
+CMD ["python", "server/server.py"]
