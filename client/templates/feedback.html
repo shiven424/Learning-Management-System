@@ -2,14 +2,38 @@
 
 {% block content %}
 <h2>Feedback</h2>
+
+<!-- Feedback Submission Form -->
 <form method="POST">
-    <label for="feedback">Provide Feedback:</label>
-    <input type="text" name="feedback" id="feedback" required>
+    <label for="feedback">Provide Feedback:</label><br>
+    <textarea name="feedback" id="feedback" rows="4" required placeholder="Enter your feedback here..."></textarea>
+    <br>
     <button type="submit">Submit</button>
 </form>
-<ul>
-    {% for feedback in feedback %}
-    <li>{{ feedback.data }}</li>
+
+<!-- Display Submission Feedback -->
+{% if error %}
+<p style="color: red;">{{ error }}</p>
+{% elif success %}
+<p style="color: green;">{{ success }}</p>
+{% endif %}
+
+<!-- List of Submitted Feedback -->
+<h3>Previous Feedback:</h3>
+<ul style="list-style-type: none; padding: 0;">
+    {% for item in feedback %}
+    <li style="border-bottom: 1px solid #ccc; padding: 10px 0;">
+        <strong>Feedback:</strong> {{ item.data }}<br>
+        {% if item.date %}
+        <em>Submitted on: {{ item.date }}</em>
+        {% endif %}
+        <!-- Optional: Display author if available -->
+        {% if item.author %}
+        <br><small>By: {{ item.author }}</small>
+        {% endif %}
+    </li>
+    {% else %}
+    <li>No feedback submitted yet.</li>
     {% endfor %}
 </ul>
 {% endblock %}

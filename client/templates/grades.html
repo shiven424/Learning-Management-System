@@ -2,9 +2,21 @@
 
 {% block content %}
 <h2>Grades</h2>
-<ul>
+
+<!-- Display Message if No Grades Available -->
+{% if not grades %}
+<p>No grades available at the moment.</p>
+{% else %}
+<!-- Grades List -->
+<ul style="list-style-type: none; padding: 0;">
     {% for grade in grades %}
-    <li>{{ grade.data }}</li>
+    <li style="border-bottom: 1px solid #ccc; padding: 10px 0;">
+        <strong>Assignment:</strong> {{ grade.assignment_name }}<br>
+        <strong>Score:</strong> {{ grade.score }}<br>
+        <strong>Date:</strong> {{ grade.date }}<br>
+        <!-- Optional: Add additional fields or styling as needed -->
+    </li>
     {% endfor %}
 </ul>
+{% endif %}
 {% endblock %}

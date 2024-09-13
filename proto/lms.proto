@@ -13,7 +13,8 @@ service LMS {
 message RegisterRequest {
     string username = 1;
     string password = 2;
-    string role = 3;  // student or instructor
+    string role = 3;  // student or teacher
+    string name = 4;  // Additional field for user name
 }
 
 message LoginRequest {
@@ -32,22 +33,61 @@ message LogoutRequest {
 
 message PostRequest {
     string token = 1;
-    string type = 2;
-    bytes data = 3;  
+    oneof post_data {  // Define different data types that can be posted
+        AssignmentData assignment = 2;
+        GradeData grade = 3;
+        FeedbackData feedback = 4;
+    }
+}
+
+message AssignmentData {
+    string teacher_id = 1;
+    string filename = 2;
+    bytes file_data = 3;  // Actual file data in bytes
+}
+
+message GradeData {
+    string assignment_id = 1;
+    string grade = 2;
+    string comments = 3;  // Comments associated with the grade
+}
+
+message FeedbackData {
+    string student_id = 1;
+    string assignment_id = 2;
+    string feedback_text = 3;  // Text of the feedback
 }
 
 message StatusResponse {
     string status = 1;
+    string error_code = 2; // Optional field for error codes
 }
 
 message GetRequest {
     string token = 1;
-    string type = 2;
+    oneof get_data_type {  // Define types of data that can be fetched
+        GetAssignmentsRequest assignments = 2;
+        GetGradesRequest grades = 3;
+        GetFeedbackRequest feedback = 4;
+    }
+}
+
+message GetAssignmentsRequest {
+    string student_id = 1;  // To fetch assignments related to the student
+}
+
+message GetGradesRequest {
+    string student_id = 1;  // Fetch grades related to the student
+}
+
+message GetFeedbackRequest {
+    string student_id = 1;  // Fetch feedback for the student
+    string teacher_id = 2;  // Optional: Fetch feedback given by a specific teacher
 }
 
 message GetResponse {
     string status = 1;
-    repeated DataItem items = 2;
+    repeated DataItem items = 2;  // List of data items returned based on request type
 }
 
 message DataItem {

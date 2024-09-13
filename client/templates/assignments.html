@@ -2,14 +2,32 @@
 
 {% block content %}
 <h2>Assignments</h2>
+
+<!-- Assignment Submission Form -->
 <form method="POST" enctype="multipart/form-data">
     <label for="assignment">Submit Assignment:</label>
     <input type="file" name="assignment" id="assignment" required>
     <button type="submit">Submit</button>
 </form>
+
+<!-- Display Submission Feedback -->
+{% if error %}
+<p style="color: red;">{{ error }}</p>
+{% elif success %}
+<p style="color: green;">{{ success }}</p>
+{% endif %}
+
+<!-- List of Assignments -->
+<h3>Submitted Assignments:</h3>
 <ul>
     {% for assignment in assignments %}
-    <li>{{ assignment.data }}</li>
+    <li>
+        {{ assignment.filename }}
+        <!-- Optional: Add a download button -->
+        <a href="data:application/octet-stream;base64,{{ assignment.data | b64encode }}" download="{{ assignment.filename }}">Download</a>
+    </li>
+    {% else %}
+    <li>No assignments submitted yet.</li>
     {% endfor %}
 </ul>
 {% endblock %}

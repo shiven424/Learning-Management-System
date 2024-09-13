@@ -15,11 +15,12 @@
             <a href="{{ url_for('assignments') }}">Assignments</a>
             <a href="{{ url_for('grades') }}">Grades</a>
             <a href="{{ url_for('feedback') }}">Feedback</a>
-            {% if not session.get('logged_in') %}
+            {% if 'logged_in' in session %}
+                <span>Welcome, {{ session.get('username') }}!</span>
+                <a href="{{ url_for('logout') }}">Logout</a>
+            {% else %}
                 <a href="{{ url_for('register') }}">Register</a>
                 <a href="{{ url_for('login') }}">Login</a>
-            {% else %}
-                <a href="{{ url_for('logout') }}">Logout</a>
             {% endif %}
         </nav>
     </header>
