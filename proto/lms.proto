@@ -25,6 +25,7 @@ message LoginRequest {
 message LoginResponse {
     string status = 1;
     string token = 2;
+    string role = 3;  // Add this line to include the role
 }
 
 message LogoutRequest {
@@ -33,7 +34,7 @@ message LogoutRequest {
 
 message PostRequest {
     string token = 1;
-    oneof post_data {  // Define different data types that can be posted
+    oneof data_type {  // Define different data types that can be posted
         AssignmentData assignment = 2;
         GradeData grade = 3;
         FeedbackData feedback = 4;
@@ -65,7 +66,7 @@ message StatusResponse {
 
 message GetRequest {
     string token = 1;
-    oneof get_data_type {  // Define types of data that can be fetched
+    oneof data_type {  // Define types of data that can be fetched
         GetAssignmentsRequest assignments = 2;
         GetGradesRequest grades = 3;
         GetFeedbackRequest feedback = 4;
@@ -92,5 +93,6 @@ message GetResponse {
 
 message DataItem {
     string typeId = 1;
-    string data = 2;
+    string filename =2;
+    string data = 3;
 }

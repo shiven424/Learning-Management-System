@@ -10,7 +10,7 @@ all: build up
 # Build Docker images
 .PHONY: build
 build:
-	$(DOCKER_COMPOSE) build
+	$(DOCKER_COMPOSE) build --no-cache
 
 # Spin up containers
 .PHONY: up
@@ -47,7 +47,17 @@ restart: stop up
 # Display logs of the running services
 .PHONY: logs
 logs:
-	$(DOCKER_COMPOSE) logs -f
+	$(DOCKER_COMPOSE) logs -f lms_client lms_server
+
+.PHONY: rebuild-server
+rebuild-server: build
+	$(DOCKER_COMPOSE) up -d lms_server
+
+# Rebuild and redeploy the client
+.PHONY: rebuild-client
+rebuild-client: build
+	$(DOCKER_COMPOSE) up -d lms_client
+
 
 # Help message for using the Makefile
 .PHONY: help

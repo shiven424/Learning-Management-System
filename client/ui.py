@@ -5,7 +5,7 @@ import lms_pb2_grpc
 import logging
 from werkzeug.utils import secure_filename
 import io
-
+import base64
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -59,6 +59,9 @@ def login():
             response = stub.Login(lms_pb2.LoginRequest(username=username, password=password))
             if response.status == "Success":
                 session['token'] = response.token
+                session['role'] = response.role
+                session["logged_in"] = True
+                session["username"] = username
                 logger.info(f"Login successful for user: {username}")
                 return redirect(url_for('dashboard'))
             else:
@@ -120,12 +123,13 @@ def assignments():
                 assignments=lms_pb2.GetAssignmentsRequest(student_id="student_id_placeholder")  # Replace with actual student_id
             )
         )
+        print(response.items)
         assignments = [
-            {'filename': item.filename, 'data': item.data}
+            {'filename': item.filename, 'data': item.data.encode('utf-8') if isinstance(item.data, str) else item.data}
             for item in response.items
         ]
         logger.info("Assignments retrieved successfully")
-        return render_template('assignments.html', assignments=assignments)
+        return render_template('assignments.html', assignments=assignments, role=session['role'])
     except grpc.RpcError as e:
         logger.error(f"gRPC error on GET: {e.code()} - {e.details()}")
         return "Failed to retrieve assignments", 500
@@ -208,11 +212,18 @@ def logout():
     if token:
         logger.info(f"Logout request for token: {token}")
         try:
+            session.clear()  # Clear all session data
             stub.Logout(lms_pb2.LogoutRequest(token=token))
             logger.info("Logout successful")
         except grpc.RpcError as e:
             logger.error(f"gRPC error during logout: {e.code()} - {e.details()}")
     return redirect(url_for('home'))
+
+@app.template_filter('b64encode')
+def b64encode_filter(data):
+    if not isinstance(data, bytes):
+        data = str(data).encode('utf-8')  # Convert to bytes if it's a string
+    return base64.b64encode(data).decode('utf-8')
 
 if __name__ == '__main__':
     logger.info("Starting LMS Client")

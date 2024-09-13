@@ -4,11 +4,13 @@
 <h2>Assignments</h2>
 
 <!-- Assignment Submission Form -->
+{% if role == 'student' %}
 <form method="POST" enctype="multipart/form-data">
     <label for="assignment">Submit Assignment:</label>
     <input type="file" name="assignment" id="assignment" required>
     <button type="submit">Submit</button>
 </form>
+{% endif %}
 
 <!-- Display Submission Feedback -->
 {% if error %}
@@ -23,7 +25,7 @@
     {% for assignment in assignments %}
     <li>
         {{ assignment.filename }}
-        <!-- Optional: Add a download button -->
+        <!-- Download button with base64 encoded data -->
         <a href="data:application/octet-stream;base64,{{ assignment.data | b64encode }}" download="{{ assignment.filename }}">Download</a>
     </li>
     {% else %}

@@ -37,13 +37,13 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
                 token = generate_token(user['username'])
                 self.sessions[token] = {'username': user['username'], 'role': user['role']}
                 logger.info(f"Login successful for user: {request.username}, Token: {token}")
-                return lms_pb2.LoginResponse(status="Success", token=token)
+                return lms_pb2.LoginResponse(status="Success", token=token, role=user['role'])
             else:
                 logger.warning(f"Login failed for user: {request.username}")
-                return lms_pb2.LoginResponse(status="Failed", token="")
+                return lms_pb2.LoginResponse(status="Failed", token="", role="")
         except Exception as e:
             logger.error(f"Error during login: {str(e)}")
-            return lms_pb2.LoginResponse(status="Failed due to server error", token="")
+            return lms_pb2.LoginResponse(status="Failed due to server error", token="", role="")
 
     def Logout(self, request, context):
         token = request.token
@@ -57,7 +57,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             return lms_pb2.StatusResponse(status="Invalid token")
 
     def Post(self, request, context):
-        logger.info(f"Received post request of type: {request.type} by token: {request.token}")
+        logger.info(f"Received post request by token: {request.token}")
         user_session = self.sessions.get(request.token)
         if not user_session:
             logger.warning("Unauthorized access attempt")
@@ -66,39 +66,43 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
         role = user_session['role']
 
         try:
-            if request.type == "assignment" and role == "student":
+            # Check which type of data is being posted
+            if  request.WhichOneof('data_type') == 'assignment' and role == "student":
+                assignment_data = request.assignment
                 add_assignment(
                     student_id=user_session['username'],
-                    teacher_id=request.data.teacher_id,  # Ensure this matches actual logic
-                    filename=request.data.filename,
-                    data=request.data.file_data
+                    teacher_id=assignment_data.teacher_id,
+                    filename=assignment_data.filename,
+                    data=assignment_data.file_data
                 )
                 logger.info("Assignment submitted successfully")
                 return lms_pb2.StatusResponse(status="Assignment submitted successfully")
-            
-            elif request.type == "grade" and role == "teacher":
+
+            elif request.WhichOneof('data_type') == 'grade' and role == "teacher":
+                grade_data = request.grade
                 add_grade(
-                    assignment_id=request.data.assignment_id,
-                    grade=request.data.grade,
-                    comments=request.data.comments
+                    assignment_id=grade_data.assignment_id,
+                    grade=grade_data.grade,
+                    comments=grade_data.comments
                 )
                 logger.info("Grade submitted successfully")
                 return lms_pb2.StatusResponse(status="Grade submitted successfully")
-            
-            elif request.type == "feedback" and role == "teacher":
+
+            elif request.WhichOneof('data_type') == 'feedback' and role == "teacher":
+                feedback_data = request.feedback
                 add_feedback(
-                    student_id=request.data.student_id,
+                    student_id=feedback_data.student_id,
                     teacher_id=user_session['username'],
-                    assignment_id=request.data.assignment_id,
-                    feedback_text=request.data.feedback_text
+                    assignment_id=feedback_data.assignment_id,
+                    feedback_text=feedback_data.feedback_text
                 )
                 logger.info("Feedback submitted successfully")
                 return lms_pb2.StatusResponse(status="Feedback submitted successfully")
-            
+
             else:
-                logger.warning(f"Invalid post type or insufficient permissions: {request.type}")
+                logger.warning(f"Invalid post type or insufficient permissions: {request.WhichOneof('data_type')}")
                 return lms_pb2.StatusResponse(status="Invalid type or permission denied")
-        
+
         except Exception as e:
             logger.error(f"Error during post operation: {str(e)}")
             return lms_pb2.StatusResponse(status="Failed due to server error")
@@ -115,19 +119,34 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
         items = []
 
         try:
-            if request.HasField('assignments') and role == "student":
+            # Check which type of data is being fetched
+            if request.WhichOneof('data_type') == 'assignments' and role == "student":
                 assignments_request = request.assignments
                 assignments = get_assignments(student_id=user_session['username'])
-                items = [lms_pb2.DataItem(typeId=str(i), data=assignment['filename']) for i, assignment in enumerate(assignments)]
+                items = [lms_pb2.DataItem(
+                    typeId=str(i), 
+                    filename=assignment.get('filename', ''),
+                    data=assignment.get('file_data', '') )
+                    for i, assignment in enumerate(assignments)]
                 logger.info("Assignments retrieved successfully")
             
-            elif request.HasField('grades') and role == "student":
+            elif request.WhichOneof('data_type') == 'assignments' and role == "teacher":
+                assignments_request = request.assignments
+                assignments = get_assignments(teacher_id=user_session['username'])
+                items = [lms_pb2.DataItem(
+                    typeId=str(i), 
+                    filename=assignment.get('filename', ''),
+                    data=assignment.get('file_data', '') )
+                    for i, assignment in enumerate(assignments)]
+                logger.info("Assignments retrieved successfully")
+            
+            elif request.WhichOneof('data_type') == 'grades' and role == "student":
                 grades_request = request.grades
                 grades = get_grades(student_id=user_session['username'])
                 items = [lms_pb2.DataItem(typeId=str(i), data=grade['grade']) for i, grade in enumerate(grades)]
                 logger.info("Grades retrieved successfully")
             
-            elif request.HasField('feedback') and role in ["student", "teacher"]:
+            elif request.WhichOneof('data_type') == 'feedback' and role in ["student", "teacher"]:
                 feedback_request = request.feedback
                 if role == "student":
                     feedbacks = get_feedback(student_id=user_session['username'])
@@ -145,3 +164,4 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
         except Exception as e:
             logger.error(f"Error during get operation: {str(e)}")
             return lms_pb2.GetResponse(status="Failed due to server error", items=[])
+
