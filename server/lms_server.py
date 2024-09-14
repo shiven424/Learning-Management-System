@@ -4,11 +4,12 @@ import lms_pb2_grpc
 from authentication import authenticate, generate_token, invalidate_token
 from database import (
     register_user, add_assignment, update_assignment,
-    add_assignment_feedback, add_student_feedback,
-    get_assignments, get_grades, get_assignment_feedback, get_student_feedback,
+     add_student_feedback,
+    get_assignments, get_assignment_feedback, get_student_feedback,
     get_course_materials_by_course, get_course_materials_by_teacher, add_course_material
 )
-
+from schema import User, Assignment, Feedback, CourseMaterial  # Import dataclasses
+from datetime import datetime
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -22,30 +23,35 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
     def _handle_post_assignment(self, request, user_session):
         """Handles student assignment submission."""
         assignment_data = request.assignment
-        add_assignment(
-            student_id=user_session['username'],
-            teacher_id=assignment_data.teacher_id,
+        assignment = Assignment(
+            student_name=user_session['username'],
+            teacher_name=assignment_data.teacher_id,
             filename=assignment_data.filename,
-            file_data=assignment_data.file_data
+            file_path=assignment_data.file_path,
+            submission_date=datetime.datetime.now()
         )
+        add_assignment(assignment.to_dict())
         logger.info("Assignment submitted successfully")
         return lms_pb2.StatusResponse(status="Assignment submitted successfully")
 
-    def _handle_post_assignment_feedback(self, request, user_session):
-        """Handles teacher assignment feedback submission."""
-        feedback_data = request.assignment_feedback
-        add_assignment_feedback(
-            assignment_id=feedback_data.assignment_id,
-            feedback_text=feedback_data.feedback_text
-        )
-        logger.info("Assignment feedback submitted successfully")
-        return lms_pb2.StatusResponse(status="Assignment feedback submitted successfully")
+    
+    def _handle_update_assignment(self, request, user_session):
+        """Handles updating an assignment grade for a student."""
+        assignment_data = request.assignment
+        update_assignment(
+                assignment_id=assignment_data.assignment_id,
+                grade=assignment_data.grade,
+                feedback_text=assignment_data.feedback
+            )
+        
+        logger.info("Assignment grade updated successfully")
+        return lms_pb2.StatusResponse(status="Assignment grade updated successfully")
 
     def _handle_post_student_feedback(self, request, user_session):
         """Handles teacher student feedback submission."""
         feedback_data = request.student_feedback
         add_student_feedback(
-            student_id=feedback_data.student_id,
+            student_id=feedback_data.student_name,
             teacher_id=user_session['username'],
             feedback_text=feedback_data.feedback_text
         )
@@ -55,35 +61,26 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
     def _handle_post_course_materials(self, request, user_session):
         """Handles teacher course materials submission."""
         course_materials_data = request.course_materials
-        add_course_material(
-            course_id=course_materials_data.course_id,
+        course_material = CourseMaterial(
             course_name=course_materials_data.course_name,
-            teacher_name=course_materials_data.teacher_name,
-            teacher_id=user_session['username'],
             filename=course_materials_data.filename,
-            file_data=course_materials_data.file_data
+            file_path=course_materials_data.file_path,
+            teacher_id=user_session['username'],
+            teacher_name=user_session['username']
         )
+        add_course_material(course_material.to_dict())
         logger.info("Course materials submitted successfully")
         return lms_pb2.StatusResponse(status="Course materials submitted successfully")
-    
-    def _handle_post_assignment_grades(self, request, user_session):
-        """Handles updating an assignment grade for a student."""
-        assignment_data = request.assignment
-        update_assignment(
-            assignment_id=assignment_data.assignment_id,
-            grade=assignment_data.grade
-        )
-        logger.info("Assignment grade updated successfully")
-        return lms_pb2.StatusResponse(status="Assignment grade updated successfully")
 
 
+# GET REQUESTS
     def _handle_get_assignments(self, role, user_session):
         """Handles retrieving assignments for both students and teachers."""
         if role == "student":
             assignments = get_assignments(student_id=user_session['username'])
         elif role == "teacher":
             assignments = get_assignments(teacher_id=user_session['username'])
-        
+
         items = [lms_pb2.DataItem(
             assignment_id=str(assignment.get('_id', '')),
             typeId=str(i),
@@ -92,11 +89,11 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
         ) for i, assignment in enumerate(assignments)]
         return lms_pb2.GetResponse(status="Success", items=items)
 
-    def _handle_get_grades(self, user_session):
-        """Handles retrieving grades for students."""
-        grades = get_grades(student_id=user_session['username'])
-        items = [lms_pb2.DataItem(typeId=str(i), data=grade['grade']) for i, grade in enumerate(grades)]
-        return lms_pb2.GetResponse(status="Success", items=items)
+    # def _handle_get_grades(self, user_session):
+    #     """Handles retrieving grades for students."""
+    #     grades = get_grades(student_id=user_session['username'])
+    #     items = [lms_pb2.DataItem(typeId=str(i), data=grade['grade']) for i, grade in enumerate(grades)]
+    #     return lms_pb2.GetResponse(status="Success", items=items)
 
     def _handle_get_feedback(self, role, request):
         """Handles retrieving assignment or student feedback."""
@@ -107,7 +104,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
                 feedbacks = get_student_feedback(student_id=request.token)
             else:
                 feedbacks = get_student_feedback(teacher_id=request.token)
-        
+
         items = [lms_pb2.DataItem(typeId=str(i), data=feedback['feedback_text']) for i, feedback in enumerate(feedbacks)]
         return lms_pb2.GetResponse(status="Success", items=items)
 
@@ -175,14 +172,12 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             # Delegate post handling based on data type and role
             if request.WhichOneof('data_type') == 'assignment' and role == "student":
                 return self._handle_post_assignment(request, user_session)
-            elif request.WhichOneof('data_type') == 'assignment_feedback' and role == "teacher":
-                return self._handle_post_assignment_feedback(request, user_session)
+            elif request.WhichOneof('data_type') in ['assignment_feedback','assignment_grade'] and role == "teacher":
+                return self._handle_update_assignment(request, user_session)
             elif request.WhichOneof('data_type') == 'student_feedback' and role == "teacher":
                 return self._handle_post_student_feedback(request, user_session)
             elif request.WhichOneof('data_type') == 'course_material' and role == "teacher":
                 return self._handle_post_course_material(request, user_session)
-            elif request.WhichOneof('data_type') == 'assignment_grades' and role == "teacher":
-                return self._handle_post_assignment_grades(request, user_session)
             else:
                 logger.warning(f"Invalid post type or insufficient permissions: {request.WhichOneof('data_type')}")
                 return lms_pb2.StatusResponse(status="Invalid type or permission denied")
@@ -204,16 +199,16 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             # Delegate get handling based on data type and role
             if request.WhichOneof('data_type') == 'assignments':
                 return self._handle_get_assignments(role, user_session)
-            elif request.WhichOneof('data_type') == 'grades' and role == "student":
-                return self._handle_get_grades(user_session)
-            elif request.WhichOneof('data_type') in ['assignment_feedback', 'student_feedback']:
+            elif request.WhichOneof('data_type') =='student_feedback':
                 return self._handle_get_feedback(role, request)
             elif request.WhichOneof('data_type') == 'course_material':
                 return self._handle_get_course_material(role, request, user_session)
             else:
-                logger.warning(f"Invalid get request type or insufficient permissions")
+                logger.warning("Invalid get request type or insufficient permissions")
                 return lms_pb2.GetResponse(status="Invalid request or permissions", items=[])
 
         except Exception as e:
             logger.error(f"Error during get operation: {str(e)}")
             return lms_pb2.GetResponse(status="Failed due to server error", items=[])
+
+
