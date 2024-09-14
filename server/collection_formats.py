@@ -30,10 +30,11 @@ class Assignment:
 
 @dataclass
 class Feedback:
+    feedback_text: str
+    submission_date: datetime
     student_name: Optional[str] = None
     teacher_name: Optional[str] = None
-    feedback_text: str
-    date: datetime
+
 
     def to_dict(self) -> dict:
         # Convert datetime to string for MongoDB compatibility
@@ -46,8 +47,8 @@ class CourseMaterial:
     course_name: str
     filename: str
     file_path: str
-    teacher_id: str
     teacher_name: str
+    upload_date: datetime
 
     def to_dict(self) -> dict:
         return asdict(self)

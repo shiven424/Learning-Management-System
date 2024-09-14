@@ -5,10 +5,10 @@ from authentication import authenticate, generate_token, invalidate_token
 from database import (
     register_user, add_assignment, update_assignment,
      add_student_feedback,
-    get_assignments, get_assignment_feedback, get_student_feedback,
+    get_assignments, get_student_feedback,
     get_course_materials_by_course, get_course_materials_by_teacher, add_course_material
 )
-from schema import User, Assignment, Feedback, CourseMaterial  # Import dataclasses
+from collection_formats import User, Assignment, Feedback, CourseMaterial  # Import dataclasses
 from datetime import datetime
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -25,7 +25,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
         assignment_data = request.assignment
         assignment = Assignment(
             student_name=user_session['username'],
-            teacher_name=assignment_data.teacher_id,
+            teacher_name=assignment_data.teacher_name,
             filename=assignment_data.filename,
             file_path=assignment_data.file_path,
             submission_date=datetime.datetime.now()
@@ -51,8 +51,8 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
         """Handles teacher student feedback submission."""
         feedback_data = request.student_feedback
         add_student_feedback(
-            student_id=feedback_data.student_name,
-            teacher_id=user_session['username'],
+            student_name=feedback_data.student_name,
+            teacher_name=user_session['username'],
             feedback_text=feedback_data.feedback_text
         )
         logger.info("Student feedback submitted successfully")
@@ -60,12 +60,11 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
 
     def _handle_post_course_materials(self, request, user_session):
         """Handles teacher course materials submission."""
-        course_materials_data = request.course_materials
+        course_materials_data = request.content
         course_material = CourseMaterial(
             course_name=course_materials_data.course_name,
             filename=course_materials_data.filename,
             file_path=course_materials_data.file_path,
-            teacher_id=user_session['username'],
             teacher_name=user_session['username']
         )
         add_course_material(course_material.to_dict())
@@ -81,31 +80,34 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
         elif role == "teacher":
             assignments = get_assignments(teacher_id=user_session['username'])
 
-        items = [lms_pb2.DataItem(
-            assignment_id=str(assignment.get('_id', '')),
+        items = [lms_pb2.AssignmentData(
             typeId=str(i),
+            assignment_id=str(assignment.get('_id', '')),
+            student_name=assignment.get('student_name', ''),
+            teacher_name=assignment.get('teacher_name', ''),
             filename=assignment.get('filename', ''),
-            data=assignment.get('file_path', '')  # Send file path instead of file data
+            file_path=assignment.get('file_path', ''),
+            submission_date=str(assignment.get('submission_date', '')),
+            grade=assignment.get('grade', ''),
+            feedback=assignment.get('feedback', ''),
         ) for i, assignment in enumerate(assignments)]
         return lms_pb2.GetResponse(status="Success", items=items)
 
-    # def _handle_get_grades(self, user_session):
-    #     """Handles retrieving grades for students."""
-    #     grades = get_grades(student_id=user_session['username'])
-    #     items = [lms_pb2.DataItem(typeId=str(i), data=grade['grade']) for i, grade in enumerate(grades)]
-    #     return lms_pb2.GetResponse(status="Success", items=items)
-
     def _handle_get_feedback(self, role, request):
         """Handles retrieving assignment or student feedback."""
-        if request.WhichOneof('data_type') == 'assignment_feedback':
-            feedbacks = get_assignment_feedback(assignment_id=request.assignment_feedback.assignment_id)
+        if role == "student":
+            feedbacks = get_student_feedback(student_id=request.token)
         else:
-            if role == "student":
-                feedbacks = get_student_feedback(student_id=request.token)
-            else:
-                feedbacks = get_student_feedback(teacher_id=request.token)
+            feedbacks = get_student_feedback(teacher_id=request.token)
 
-        items = [lms_pb2.DataItem(typeId=str(i), data=feedback['feedback_text']) for i, feedback in enumerate(feedbacks)]
+        items = [lms_pb2.FeedbackData(
+            typeId=str(i), 
+            feedback_id=str(feedback.get('_id', '')),
+            student_name=feedback.get('student_name', ''),
+            teacher_name=feedback.get('teacher_name', ''),
+            feedback_text=feedback.get('feedback_text', ''),
+            submission_date=str(feedback.get('submission_date', '')),
+            ) for i, feedback in enumerate(feedbacks)]
         return lms_pb2.GetResponse(status="Success", items=items)
 
     def _handle_get_course_material(self, role, request, user_session):
@@ -115,7 +117,15 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
         else:
             course_materials = get_course_materials_by_course(course_name=request.course_material.course_name)
 
-        items = [lms_pb2.DataItem(typeId=str(i), data=material['file_path']) for i, material in enumerate(course_materials)]
+        items = [lms_pb2.CourseMaterial(
+            typeId=str(i), 
+            material_id=str(material.get('_id', '')),
+            teacher_name=material.get('teacher_name', ''),
+            course_name=material.get('course_name', ''),
+            filename=material.get('filename', ''),
+            file_path=material.get('file_path', ''),
+            upload_date=str(material.get('upload_date', ''))
+            ) for i, material in enumerate(course_materials)]
         return lms_pb2.GetResponse(status="Success", items=items)
 
     # --- Main Functions ---

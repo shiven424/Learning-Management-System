@@ -37,14 +37,7 @@ message StatusResponse {
     string error_code = 2; // Optional field for error codes
 }
 
-// Post requests
-message PostRequest {
-    string token = 1;
-    oneof data_type {  // Define different data types that can be posted
-        AssignmentData assignment = 2;
-        FeedbackData feedback = 3;  // Updated to include feedback
-    }
-}
+// Main field types
 
 message AssignmentData {
     string student_name = 1;
@@ -53,12 +46,36 @@ message AssignmentData {
     string file_path = 4;  // Path to the uploaded file
     string grade = 5;      // Field for grade
     string feedback_text = 6;  // Field for feedback
+    string submission_date = 7;
+    string assignment_id = 8;
 }
 
 message FeedbackData {
     string student_name = 1;
-    teacher_name = 2;
+    string teacher_name = 2;  // Added the type
     string feedback_text = 3;  // Text of the feedback
+    string submission_date = 4;
+    string feedback_id = 5;
+}
+
+message CourseMaterial {
+    string teacher_name = 1;
+    string course_name = 2;
+    string filename = 3;
+    string file_path = 4;
+    string material_id = 5;
+    string upload_date = 6;
+}
+
+
+// Post requests
+message PostRequest {
+    string token = 1;
+    oneof data_type {  // Define different data types that can be posted
+        AssignmentData assignment = 2;
+        FeedbackData student_feedback = 3;  // Updated to include feedback
+        CourseContent content = 4;
+    }
 }
 
 
@@ -66,30 +83,18 @@ message FeedbackData {
 message GetRequest {
     string token = 1;
     oneof data_type {  // Define types of data that can be fetched
-        AssignmentData assignments = 2;
-        FeedbackData feedback = 4;
-        GetCourseMaterialsRequest course_materials = 5;
+        AssignmentData assignment = 1;
+        FeedbackData feedback = 2;
+        CourseContent content = 3;
     }
 }
 
-message GetCourseMaterialsRequest {
-    string course_name = 1;  // Fetch course materials related to a specific course
-}
-
-message FeedbackDataItem {
-    string feedback_text = 1;
-    string assignment_id = 2; // Optional field if feedback is related to an assignment
-}
 
 message GetResponse {
     string status = 1;
-    repeated DataItem items = 2;  // Existing data items for assignments and course materials
-    repeated FeedbackDataItem feedback_items = 3;  // New feedback items
+    repeated AssignmentData assignment_items = 2;  // Existing data items for assignments and course materials
+    repeated FeedbackData feedback_items = 3;  // New feedback items
+    repeated CourseContent content_items = 4;
 }
 
-message DataItem {
-    string assignment_id = 1;  // Add this line to include assignment_id
-    string typeId = 2;
-    string filename = 3;
-    string file_path = 4;  // Path to the file
-}
+

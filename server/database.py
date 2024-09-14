@@ -4,7 +4,7 @@ import os
 import logging
 from datetime import datetime
 from conts import FILE_STORAGE_DIR
-from schema import User, Assignment, Feedback, CourseMaterial
+from collection_formats import User, Assignment, Feedback, CourseMaterial
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
