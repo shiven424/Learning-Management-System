@@ -71,15 +71,15 @@ def execute_command(stub, command):
         if token:
             get_type = input("Type (assignments/grades/feedback): ").strip().lower()
             if get_type == "assignments":
-                student_id = input("Student ID (leave blank to fetch your assignments): ")
+                student_id = input("Student ID (leave blank to fetch your assignments): ") or None
                 request = lms_pb2.GetAssignmentsRequest(student_id=student_id)
                 response = stub.Get(lms_pb2.GetRequest(token=token, assignments=request))
                 print(f"Get status: {response.status}")
                 for item in response.items:
-                    print(f"Assignment: {item.data}")
+                    print(f"Assignment: {item.filename}, Data: {item.data}")
 
             elif get_type == "grades":
-                student_id = input("Student ID (leave blank to fetch your grades): ")
+                student_id = input("Student ID (leave blank to fetch your grades): ") or None
                 request = lms_pb2.GetGradesRequest(student_id=student_id)
                 response = stub.Get(lms_pb2.GetRequest(token=token, grades=request))
                 print(f"Get status: {response.status}")
@@ -87,7 +87,7 @@ def execute_command(stub, command):
                     print(f"Grade: {item.data}")
 
             elif get_type == "feedback":
-                student_id = input("Student ID (leave blank to fetch your feedback): ")
+                student_id = input("Student ID (leave blank to fetch your feedback): ") or None
                 request = lms_pb2.GetFeedbackRequest(student_id=student_id)
                 response = stub.Get(lms_pb2.GetRequest(token=token, feedback=request))
                 print(f"Get status: {response.status}")

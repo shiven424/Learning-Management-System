@@ -1,11 +1,13 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, render_template, request, redirect, url_for, session, send_file
 import grpc
 import lms_pb2
 import lms_pb2_grpc
 import logging
+import os
 from werkzeug.utils import secure_filename
 import io
 import base64
+
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -15,7 +17,8 @@ app.secret_key = 'supersecretkey'
 app.config.update(
     SESSION_COOKIE_SECURE=True,
     SESSION_COOKIE_HTTPONLY=True,
-    SESSION_COOKIE_SAMESITE='Lax'
+    SESSION_COOKIE_SAMESITE='Lax',
+    FILE_STORAGE_DIR='/path/to/storage'  # Ensure this matches the server's directory
 )
 
 # gRPC Channel Setup
@@ -88,33 +91,45 @@ def assignments():
         return redirect(url_for('home'))
 
     if request.method == 'POST':
-        file = request.files.get('assignment')
-        if file and file.filename != '':
-            filename = secure_filename(file.filename)
-            file_content = file.read()
-
-            # Send assignment data to gRPC server
-            logger.info(f"Submitting assignment: {filename}")
+        for assignment_id, grade in request.form.items():
+            if assignment_id.startswith('grade_'):
+                assignment_id = assignment_id[len('grade_'):]
+                logger.info(f"Submitting grade {grade} for assignment ID {assignment_id}")
+                try:
+                    response = stub.Post(
+                        lms_pb2.PostRequest(
+                            token=session['token'],
+                            grade=lms_pb2.GradeData(
+                                student_id="student_id_placeholder",  # Replace with actual student_id
+                                assignment_id=assignment_id,
+                                grade=grade
+                            )
+                        )
+                    )
+                    if response.status != "Success":
+                        logger.warning(f"Failed to submit grade: {response.status}")
+                except grpc.RpcError as e:
+                    logger.error(f"gRPC error during grade submission: {e.code()} - {e.details()}")
+                    
+        feedbacks = {k: v for k, v in request.form.items() if k.startswith('feedback_')}
+        for assignment_id, feedback in feedbacks.items():
+            assignment_id = assignment_id[len('feedback_'):]
+            logger.info(f"Submitting feedback for assignment ID {assignment_id}")
             try:
                 response = stub.Post(
                     lms_pb2.PostRequest(
                         token=session['token'],
-                        assignment=lms_pb2.AssignmentData(
-                            teacher_id="teacher_id_placeholder",  # Replace with actual teacher_id
-                            filename=filename,
-                            file_data=file_content
+                        feedback=lms_pb2.FeedbackData(
+                            student_id="student_id_placeholder",  # Replace with actual student_id
+                            assignment_id=assignment_id,
+                            feedback_text=feedback
                         )
                     )
                 )
-                if response.status == "Success":
-                    logger.info("Assignment submitted successfully")
-                    return redirect(url_for('assignments'))
-                else:
-                    logger.warning(f"Failed to submit assignment: {response.status}")
-                    return "Failed to submit assignment", 400
+                if response.status != "Success":
+                    logger.warning(f"Failed to submit feedback: {response.status}")
             except grpc.RpcError as e:
-                logger.error(f"gRPC error on POST: {e.code()} - {e.details()}")
-                return "Failed to submit assignment", 500
+                logger.error(f"gRPC error during feedback submission: {e.code()} - {e.details()}")
 
     try:
         response = stub.Get(
@@ -123,9 +138,12 @@ def assignments():
                 assignments=lms_pb2.GetAssignmentsRequest(student_id="student_id_placeholder")  # Replace with actual student_id
             )
         )
-        print(response.items)
         assignments = [
-            {'filename': item.filename, 'data': item.data.encode('utf-8') if isinstance(item.data, str) else item.data}
+            {
+                'assignment_id': item.assignment_id,
+                'filename': item.filename,
+                'data': item.data.encode('utf-8') if isinstance(item.data, str) else item.data
+            }
             for item in response.items
         ]
         logger.info("Assignments retrieved successfully")
@@ -140,7 +158,6 @@ def grades():
         logger.info("Access to grades denied - no valid session")
         return redirect(url_for('home'))
     try:
-        # Send request with updated GetRequest message
         response = stub.Get(
             lms_pb2.GetRequest(
                 token=session['token'],
@@ -153,14 +170,12 @@ def grades():
         logger.error(f"gRPC error during grade retrieval: {e.code()} - {e.details()}")
         return "Failed to retrieve grades", 500
 
-
-
 @app.route('/feedback', methods=['GET', 'POST'])
 def feedback():
     if 'token' not in session:
         logger.info("Access to feedback denied - no valid session")
         return redirect(url_for('home'))
-    
+
     if request.method == 'POST':
         feedback_text = request.form['feedback']
         logger.info("Submitting feedback")
@@ -205,6 +220,19 @@ def feedback():
         logger.error(f"gRPC error during feedback retrieval: {e.code()} - {e.details()}")
         return "Failed to retrieve feedback", 500
 
+@app.route('/files/<filename>')
+def download_file(filename):
+    if 'token' not in session:
+        logger.info("Access to file download denied - no valid session")
+        return redirect(url_for('home'))
+
+    file_path = os.path.join(app.config['FILE_STORAGE_DIR'], filename)
+    if os.path.exists(file_path):
+        logger.info(f"Serving file: {filename}")
+        return send_file(file_path)
+    else:
+        logger.warning(f"File not found: {filename}")
+        return "File not found", 404
 
 @app.route('/logout')
 def logout():

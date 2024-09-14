@@ -10,7 +10,7 @@ all: build up
 # Build Docker images
 .PHONY: build
 build:
-	$(DOCKER_COMPOSE) build --no-cache
+	$(DOCKER_COMPOSE) build
 
 # Spin up containers
 .PHONY: up

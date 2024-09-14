@@ -3,7 +3,7 @@
 {% block content %}
 <h2>Assignments</h2>
 
-<!-- Assignment Submission Form -->
+<!-- Assignment Submission Form for Students -->
 {% if role == 'student' %}
 <form method="POST" enctype="multipart/form-data">
     <label for="assignment">Submit Assignment:</label>
@@ -19,17 +19,40 @@
 <p style="color: green;">{{ success }}</p>
 {% endif %}
 
-<!-- List of Assignments -->
-<h3>Submitted Assignments:</h3>
-<ul>
-    {% for assignment in assignments %}
-    <li>
-        {{ assignment.filename }}
-        <!-- Download button with base64 encoded data -->
-        <a href="data:application/octet-stream;base64,{{ assignment.data | b64encode }}" download="{{ assignment.filename }}">Download</a>
-    </li>
-    {% else %}
-    <li>No assignments submitted yet.</li>
-    {% endfor %}
-</ul>
+<!-- List of Assignments with Grading and Feedback Options for Teachers -->
+<h3>Assignments:</h3>
+<form method="POST" action="{{ url_for('assignments') }}">
+    <ul>
+        {% for assignment in assignments %}
+        <li>
+            {{ assignment.filename }}
+            <!-- Download button with base64 encoded data -->
+            <a href="data:application/octet-stream;base64,{{ assignment.data | b64encode }}" download="{{ assignment.filename }}">Download</a>
+
+            <!-- Grading and Feedback Options -->
+            {% if role == 'teacher' %}
+            <div>
+                <input type="hidden" name="assignment_id" value="{{ assignment.assignment_id }}">
+                
+                <label for="grade_{{ assignment.assignment_id }}">Grade:</label>
+                <select name="grade_{{ assignment.assignment_id }}" id="grade_{{ assignment.assignment_id }}">
+                    <option value="A">A</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                    <option value="D">D</option>
+                    <option value="F">F</option>
+                </select>
+
+                <label for="feedback_{{ assignment.assignment_id }}">Feedback:</label>
+                <textarea name="feedback_{{ assignment.assignment_id }}" id="feedback_{{ assignment.assignment_id }}" rows="3" cols="50"></textarea>
+
+                <button type="submit">Submit Grade & Feedback</button>
+            </div>
+            {% endif %}
+        </li>
+        {% else %}
+        <li>No assignments available.</li>
+        {% endfor %}
+    </ul>
+</form>
 {% endblock %}

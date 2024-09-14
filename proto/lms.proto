@@ -25,7 +25,7 @@ message LoginRequest {
 message LoginResponse {
     string status = 1;
     string token = 2;
-    string role = 3;  // Add this line to include the role
+    string role = 3;  // Include the role
 }
 
 message LogoutRequest {
@@ -36,21 +36,16 @@ message PostRequest {
     string token = 1;
     oneof data_type {  // Define different data types that can be posted
         AssignmentData assignment = 2;
-        GradeData grade = 3;
-        FeedbackData feedback = 4;
+        FeedbackData feedback = 3;  // Updated to include feedback
     }
 }
 
 message AssignmentData {
     string teacher_id = 1;
     string filename = 2;
-    bytes file_data = 3;  // Actual file data in bytes
-}
-
-message GradeData {
-    string assignment_id = 1;
-    string grade = 2;
-    string comments = 3;  // Comments associated with the grade
+    string file_path = 3;  // Path to the uploaded file
+    string grade = 4;      // Field for grade
+    string feedback_text = 5;  // Field for feedback
 }
 
 message FeedbackData {
@@ -70,11 +65,13 @@ message GetRequest {
         GetAssignmentsRequest assignments = 2;
         GetGradesRequest grades = 3;
         GetFeedbackRequest feedback = 4;
+        GetCourseMaterialsRequest course_materials = 5;
     }
 }
 
 message GetAssignmentsRequest {
     string student_id = 1;  // To fetch assignments related to the student
+    string teacher_id = 2;  // Optional: Fetch assignments related to a specific teacher
 }
 
 message GetGradesRequest {
@@ -86,13 +83,18 @@ message GetFeedbackRequest {
     string teacher_id = 2;  // Optional: Fetch feedback given by a specific teacher
 }
 
+message GetCourseMaterialsRequest {
+    string course_name = 1;  // Fetch course materials related to a specific course
+}
+
 message GetResponse {
     string status = 1;
     repeated DataItem items = 2;  // List of data items returned based on request type
 }
 
 message DataItem {
-    string typeId = 1;
-    string filename =2;
-    string data = 3;
+    string assignment_id = 1;  // Add this line to include assignment_id
+    string typeId = 2;
+    string filename = 3;
+    string file_path = 4;  // Path to the file
 }
