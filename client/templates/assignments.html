@@ -21,16 +21,15 @@
 
 <!-- List of Assignments with Grading and Feedback Options for Teachers -->
 <h3>Assignments:</h3>
-<form method="POST" action="{{ url_for('assignments') }}">
-    <ul>
-        {% for assignment in assignments %}
-        <li>
-            {{ assignment.filename }}
-            <!-- Download button with base64 encoded data -->
-            <a href="data:application/octet-stream;base64,{{ assignment.data | b64encode }}" download="{{ assignment.filename }}">Download</a>
-
-            <!-- Grading and Feedback Options -->
-            {% if role == 'teacher' %}
+<ul>
+    {% for assignment in assignments %}
+    <li>
+        <!-- Make the file name clickable to download -->
+        <a href="{{ url_for('download_file', file_path=assignment.file_path) }}">{{ assignment.filename }}</a>
+        
+        <!-- Grading and Feedback Options -->
+        {% if role == 'teacher' %}
+        <form method="POST" action="{{ url_for('assignments') }}">
             <div>
                 <input type="hidden" name="assignment_id" value="{{ assignment.assignment_id }}">
                 
@@ -48,11 +47,11 @@
 
                 <button type="submit">Submit Grade & Feedback</button>
             </div>
-            {% endif %}
-        </li>
-        {% else %}
-        <li>No assignments available.</li>
-        {% endfor %}
-    </ul>
-</form>
+        </form>
+        {% endif %}
+    </li>
+    {% else %}
+    <li>No assignments available.</li>
+    {% endfor %}
+</ul>
 {% endblock %}

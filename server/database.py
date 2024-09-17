@@ -23,6 +23,7 @@ feedback_collection = db.feedback
 
 def save_file(file_data, filename):
     """Save the file data to a specified directory."""
+    logger.info(f"Saving file: {filename} to {FILE_STORAGE_DIR}")
     file_path = os.path.join(FILE_STORAGE_DIR, filename)
     with open(file_path, 'wb') as f:
         f.write(file_data)
@@ -43,16 +44,16 @@ def find_user(username):
     return users_collection.find_one({"username": username})
 
 # Assignments
-def add_assignment(student_name, teacher_name, filename, file_data, grade=None, feedback_text=None):
-    file_path = save_file(file_data, filename)
+def add_assignment(student_name, teacher_name, filename, file_path, file_id, grade=None, feedback_text=None):
     assignment = Assignment(
         student_name=student_name,
         teacher_name=teacher_name,
         filename=filename,
         file_path=file_path,
+        file_id=file_id,
         submission_date=datetime.now(),
         grade=grade,
-        feedback=feedback_text
+        feedback=feedback_text,
     )
     assignments_collection.insert_one(assignment.to_dict())
     logger.info(f"Assignment added for student: {student_name}")
@@ -66,7 +67,18 @@ def get_assignments(student_name=None, teacher_name=None):
         logger.info(f"Fetching assignments for teacher: {teacher_name}")
         query["teacher_name"] = teacher_name
     
-    return list(assignments_collection.find(query, {"_id": 0, "filename": 1, "file_path": 1, "submission_date": 1, "grade": 1, "feedback": 1}))
+    return list(assignments_collection.find(query,
+                                     {
+                                        "_id": 1,
+                                        "student_name": 1,  # Add this field
+                                        "teacher_name": 1,  # Add this field
+                                        "filename": 1,
+                                        "file_path": 1,
+                                        "file_id": 1,
+                                        "submission_date": 1,
+                                        "grade": 1,
+                                        "feedback": 1
+                                    }))
 
 def update_assignment(assignment_id, grade=None, feedback_text=None):
     update_fields = {}
@@ -107,12 +119,13 @@ def get_student_feedback(student_name=None, teacher_name=None):
 
     return list(feedback_collection.find(query, {"_id": 0, "feedback_text": 1, "date": 1}))
 
-def add_course_material(course_name, filename, file_data, teacher_id, teacher_name):
+def add_course_material(course_name, filename, file_data, file_id, teacher_id, teacher_name):
     file_path = save_file(file_data, filename)
     course_material = CourseMaterial(
         course_name=course_name,
         filename=filename,
         file_path=file_path,
+        file_id = file_id,
         teacher_id=teacher_id,
         teacher_name=teacher_name
     )

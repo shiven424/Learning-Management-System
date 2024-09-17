@@ -6,6 +6,8 @@ service LMS {
     rpc Register(RegisterRequest) returns (StatusResponse);
     rpc Login(LoginRequest) returns (LoginResponse);
     rpc Logout(LogoutRequest) returns (StatusResponse);
+    rpc Upload(UploadFileRequest) returns (UploadFileResponse);
+    rpc Download(DownloadFileRequest) returns (DownloadFileResponse);
     rpc Post(PostRequest) returns (StatusResponse);
     rpc Get(GetRequest) returns (GetResponse);
 }
@@ -37,6 +39,29 @@ message StatusResponse {
     string error_code = 2; // Optional field for error codes
 }
 
+
+message UploadFileRequest {
+    string token = 1;
+    string filename = 2;
+    bytes data = 3;
+}
+
+message UploadFileResponse {
+    string status = 1;
+    string file_path = 2;
+    string file_id = 3;
+}
+
+message DownloadFileRequest {
+    string token = 1;
+    string file_path = 2;
+}
+
+message DownloadFileResponse {
+    string status = 1;
+    bytes data = 2;
+}
+
 // Main field types
 
 message AssignmentData {
@@ -48,6 +73,8 @@ message AssignmentData {
     string feedback_text = 6;  // Field for feedback
     string submission_date = 7;
     string assignment_id = 8;
+    string file_id = 9;
+
 }
 
 message FeedbackData {
@@ -56,6 +83,7 @@ message FeedbackData {
     string feedback_text = 3;  // Text of the feedback
     string submission_date = 4;
     string feedback_id = 5;
+    
 }
 
 message CourseMaterial {
@@ -65,6 +93,14 @@ message CourseMaterial {
     string file_path = 4;
     string material_id = 5;
     string upload_date = 6;
+    bytes file_content = 7;
+}
+
+message AssignmentUpdate {
+    string grade = 1;      // Field for grade
+    string feedback_text = 2;  // Field for feedback
+    string assignment_id = 3; 
+
 }
 
 
@@ -74,7 +110,8 @@ message PostRequest {
     oneof data_type {  // Define different data types that can be posted
         AssignmentData assignment = 2;
         FeedbackData student_feedback = 3;  // Updated to include feedback
-        CourseContent content = 4;
+        CourseMaterial content = 4;
+        AssignmentUpdate assignment_update = 5;
     }
 }
 
@@ -83,9 +120,9 @@ message PostRequest {
 message GetRequest {
     string token = 1;
     oneof data_type {  // Define types of data that can be fetched
-        AssignmentData assignment = 1;
-        FeedbackData feedback = 2;
-        CourseContent content = 3;
+        AssignmentData assignment = 2;
+        FeedbackData feedback = 3;
+        CourseMaterial content = 4;
     }
 }
 
@@ -94,7 +131,7 @@ message GetResponse {
     string status = 1;
     repeated AssignmentData assignment_items = 2;  // Existing data items for assignments and course materials
     repeated FeedbackData feedback_items = 3;  // New feedback items
-    repeated CourseContent content_items = 4;
+    repeated CourseMaterial course_items = 4;
 }
 
 

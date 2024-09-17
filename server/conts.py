@@ -1,5 +1,4 @@
 import os
-
-FILE_STORAGE_DIR =  "documents"
-
-os.makedirs(FILE_STORAGE_DIR, exist_ok=True)
+from pathlib import Path
+FILE_STORAGE_DIR =  Path("documents")
+FILE_STORAGE_DIR.mkdir(parents=True, exist_ok=True)

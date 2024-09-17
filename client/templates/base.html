@@ -11,7 +11,7 @@
     <header>
         <h1>LMS System</h1>
         <!-- Username and Logout Display -->
-        {% if 'logged_in' in session and session['logged_in'] %}
+        {% if session.get('logged_in') %}
         <div style="text-align: right;">
             <span>Welcome, {{ session.get('username', 'Guest') }}!</span>
             <a href="{{ url_for('logout') }}">Logout</a>
@@ -19,14 +19,15 @@
         {% endif %}
         <nav>
             <a href="{{ url_for('dashboard') }}">Dashboard</a>
-            
             <!-- Show options based on the user's role -->
             {% if session.get('role') == 'student' %}
-                <a href="{{ url_for('assignments') }}">Assignments</a>
-                <a href="{{ url_for('grades') }}">Grades</a>
+                <a href="{{ url_for('assignments') }}">Upload Assignments</a>
+                <a href="{{ url_for('feedback') }}">View Feedback</a>
+                <a href="{{ url_for('course_material') }}">View Course Materials</a>
             {% elif session.get('role') == 'teacher' %}
-                <a href="{{ url_for('assignments') }}">View Submissions</a>
-                <a href="{{ url_for('feedback') }}">Feedback</a>
+                <a href="{{ url_for('assignments') }}">View Assignments</a>
+                <a href="{{ url_for('feedback') }}">Upload Feedback</a>
+                <a href="{{ url_for('course_material') }}">Upload Course Materials</a>
             {% endif %}
             
             {% if not session.get('logged_in') %}

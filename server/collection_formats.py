@@ -1,6 +1,7 @@
 from dataclasses import dataclass, asdict
 from typing import Optional
 from datetime import datetime
+from uuid import uuid4
 
 @dataclass
 class User:
@@ -18,6 +19,7 @@ class Assignment:
     teacher_name: str
     filename: str
     file_path: str
+    file_id: uuid4
     submission_date: datetime
     grade: Optional[str] = None
     feedback: Optional[str] = None
@@ -47,6 +49,7 @@ class CourseMaterial:
     course_name: str
     filename: str
     file_path: str
+    file_id: uuid4
     teacher_name: str
     upload_date: datetime
 

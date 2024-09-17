@@ -5,7 +5,7 @@ import grpc
 from concurrent import futures
 import lms_pb2_grpc
 from lms_server import LMSServer
-from file_server import app as flask_app, serve_file, upload_file  # Import Flask app and routes
+from file_server import app as flask_app  # Import Flask app and routes
 from conts import FILE_STORAGE_DIR
 
 # Ensure the file storage directory exists
