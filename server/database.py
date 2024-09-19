@@ -53,7 +53,7 @@ def add_assignment(student_name, teacher_name, filename, file_path, file_id, gra
         file_id=file_id,
         submission_date=datetime.now(),
         grade=grade,
-        feedback=feedback_text,
+        feedback_text=feedback_text,
     )
     assignments_collection.insert_one(assignment.to_dict())
     logger.info(f"Assignment added for student: {student_name}")
@@ -61,11 +61,11 @@ def add_assignment(student_name, teacher_name, filename, file_path, file_id, gra
 def get_assignments(student_name=None, teacher_name=None):
     query = {}
     if student_name:
-        logger.info(f"Fetching assignments for student: {student_name}")
+        logger.info(f"Fetching assignments for student: {student_name}, query: {query}")
         query["student_name"] = student_name
-    elif teacher_name:
-        logger.info(f"Fetching assignments for teacher: {teacher_name}")
-        query["teacher_name"] = teacher_name
+    # elif teacher_name:
+    #     logger.info(f"Fetching assignments for teacher: {teacher_name}")
+    #     query["teacher_name"] = teacher_name
     
     return list(assignments_collection.find(query,
                                      {
@@ -77,18 +77,28 @@ def get_assignments(student_name=None, teacher_name=None):
                                         "file_id": 1,
                                         "submission_date": 1,
                                         "grade": 1,
-                                        "feedback": 1
+                                        "feedback_text": 1
                                     }))
+
 
 def update_assignment(assignment_id, grade=None, feedback_text=None):
     update_fields = {}
-    if grade is not None:
-        update_fields["grade"] = grade
-    if feedback_text is not None:
-        update_fields["feedback"] = feedback_text
-    if update_fields:
-        assignments_collection.update_one({"_id": ObjectId(assignment_id)}, {"$set": update_fields})
-        logger.info(f"Assignment updated: {assignment_id}")
+    
+    if grade and grade.strip():  # Only update if grade is not empty or just whitespace
+        update_fields['grade'] = grade
+    
+    if feedback_text:
+        update_fields['feedback_text'] = feedback_text
+    
+    logger.info(f"Updating assignment: {assignment_id} with fields: {update_fields}")
+    
+    # Perform the database update
+    result = assignments_collection.update_one(
+        {"_id": ObjectId(assignment_id)}, 
+        {"$set": update_fields}
+    )
+    
+    return result
 
 def add_student_feedback(student_name=None, teacher_name=None, feedback_text=None):
     if not student_name and not teacher_name:
@@ -99,7 +109,7 @@ def add_student_feedback(student_name=None, teacher_name=None, feedback_text=Non
         student_name=student_name,
         teacher_name=teacher_name,
         feedback_text=feedback_text,
-        date=datetime.now()
+        submission_date=datetime.now()
     )
     feedback_doc_id = feedback_collection.insert_one(feedback.to_dict()).inserted_id
     logger.info(f"Feedback added: {feedback_text}")
@@ -109,15 +119,20 @@ def get_student_feedback(student_name=None, teacher_name=None):
     query = {}
     if student_name:
         query["student_name"] = student_name
-        logger.info(f"Fetching feedback for student: {student_name}")
+        logger.info(f"Fetching feedback for student: {student_name}, query: {query}")
     elif teacher_name:
         query["teacher_name"] = teacher_name
         logger.info(f"Fetching feedback for teacher: {teacher_name}")
-    else:
-        logger.warning("No valid role specified for fetching feedback.")
-        return []
+    # else:
+    #     logger.warning("No valid role specified for fetching feedback.")
+    #     return []
 
-    return list(feedback_collection.find(query, {"_id": 0, "feedback_text": 1, "date": 1}))
+    return list(feedback_collection.find(query, {"_id": 1,
+                                                 "feedback_text": 1,
+                                                 "submission_date": 1,
+                                                 "student_name": 1,
+                                                 "teacher_name": 1
+                                                 }))
 
 def add_course_material(course_name, filename, file_data, file_id, teacher_id, teacher_name):
     file_path = save_file(file_data, filename)
@@ -140,3 +155,13 @@ def get_course_materials_by_teacher(teacher_name):
 def get_course_materials_by_course(course_name):
     logger.info(f"Fetching course materials for course: {course_name}")
     return list(course_materials_collection.find({"course_name": course_name}, {"_id": 0}))
+
+def get_student_name_from_token(token):
+    # Assuming you have a way to map token to the student's username
+    user = users_collection.find_one({"token": token})
+    return user["username"] if user else None
+
+def get_teacher_name_from_token(token):
+    # Assuming you have a way to map token to the student's username
+    user = users_collection.find_one({"token": token})
+    return user["username"] if user else None

@@ -21,15 +21,15 @@
 <!-- List of Submitted Feedback -->
 <h3>Previous Feedback:</h3>
 <ul style="list-style-type: none; padding: 0;">
-    {% for item in feedback %}
+    {% for item in feedbacks %}
     <li style="border-bottom: 1px solid #ccc; padding: 10px 0;">
-        <strong>Feedback:</strong> {{ item.data }}<br>
-        {% if item.date %}
-        <em>Submitted on: {{ item.date }}</em>
+        <strong>Feedback:</strong> {{ item.feedback_text }}<br>
+        {% if item.submission_date %}
+        <em>Submitted on: {{ item.submission_date }}</em>
         {% endif %}
         <!-- Optional: Display author if available -->
-        {% if item.author %}
-        <br><small>By: {{ item.author }}</small>
+        {% if item.student_name %}
+        <br><small>By: {{ item.student_name }}</small>
         {% endif %}
     </li>
     {% else %}

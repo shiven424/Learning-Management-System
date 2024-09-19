@@ -8,7 +8,7 @@ from database import (
     register_user, add_assignment, update_assignment,
      add_student_feedback,
     get_assignments, get_student_feedback,
-    get_course_materials_by_course, get_course_materials_by_teacher, add_course_material
+    get_course_materials_by_course, get_course_materials_by_teacher, add_course_material, get_student_name_from_token,get_teacher_name_from_token
 )
 from collection_formats import User, Assignment, Feedback, CourseMaterial  # Import dataclasses
 from datetime import datetime
@@ -49,11 +49,11 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
     
     def _handle_update_assignment(self, request, user_session):
         """Handles updating an assignment grade for a student."""
-        assignment_data = request.assignment_update
-        update_assignment(
-                assignment_id=assignment_data.assignment_id,
-                grade=assignment_data.grade,
-                feedback_text=assignment_data.feedback
+        assignment_update = request.assignment_update
+        update_assignment(  
+                assignment_id=assignment_update.assignment_id,
+                grade=assignment_update.grade,
+                feedback_text=assignment_update.feedback_text
             )
         
         logger.info("Assignment grade updated successfully")
@@ -110,7 +110,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
         if role == "student":
             assignments = get_assignments(student_name=user_session['username'])
         elif role == "teacher":
-            assignments = get_assignments(teacher_name=user_session['username'])
+            assignments = get_assignments()
         logger.info(f"assignment items: {assignments}")
         assignment_items = [lms_pb2.AssignmentData(
             assignment_id=str(assignment['_id']),
@@ -128,10 +128,12 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
     def _handle_get_feedback(self, role, request):
         """Handles retrieving assignment or student feedback."""
         if role == "student":
-            feedbacks = get_student_feedback(student_name=request.token)
+            student_name = get_student_name_from_token(request.token)
+            feedbacks = get_student_feedback(student_name=student_name)
         else:
-            feedbacks = get_student_feedback(teacher_name=request.token)
-
+            teacher_name = get_teacher_name_from_token(request.token)
+            feedbacks = get_student_feedback(teacher_name=teacher_name)
+        logger.info(f"feedback items: {feedbacks}")
         feedback_items = [lms_pb2.FeedbackData(
             feedback_id=str(feedback.get('_id', '')),
             student_name=feedback.get('student_name', ''),
@@ -139,6 +141,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             feedback_text=feedback.get('feedback_text', ''),
             submission_date=str(feedback.get('submission_date', '')),
             ) for i, feedback in enumerate(feedbacks)]
+        logger.info(f"Feedbacks retrieved successfully {feedback_items}")
         return lms_pb2.GetResponse(status="Success", feedback_items=feedback_items)
 
     def _handle_get_course_material(self, role, request, user_session):
@@ -232,7 +235,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
                 return self._handle_post_assignment(request, user_session)
             elif request.WhichOneof('data_type') == 'assignment_update' and role == "teacher":
                 return self._handle_update_assignment(request, user_session)
-            elif request.WhichOneof('data_type') == 'student_feedback' and role == "teacher":
+            elif request.WhichOneof('data_type') == 'student_feedback' and (role == "teacher" or role == "student"):
                 return self._handle_post_student_feedback(request, user_session)
             elif request.WhichOneof('data_type') == 'course_material' and role == "teacher":
                 return self._handle_post_course_material(request, user_session)
@@ -257,7 +260,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
         # Delegate get handling based on data type and role
         if request.WhichOneof('data_type') == 'assignment':
             return self._handle_get_assignments(role, user_session)
-        elif request.WhichOneof('data_type') =='student_feedback':
+        elif request.WhichOneof('data_type') =='feedback'and (role == "teacher" or role == "student"):
             return self._handle_get_feedback(role, request)
         elif request.WhichOneof('data_type') == 'course_material':
             return self._handle_get_course_material(role, request, user_session)

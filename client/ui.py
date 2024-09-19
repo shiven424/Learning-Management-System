@@ -91,36 +91,41 @@ def assignments():
 
 def handle_assignments_post():
     if session['role'] == 'teacher':
-        for assignment_id, grade in request.form.items():
-            if assignment_id.startswith('grade_'):
-                assignment_id_cleaned = assignment_id[len('grade_'):]
+        for key, value in request.form.items():
+            if key.startswith('grade_'):
+                assignment_id_cleaned = key[len('grade_'):]  # This extracts the assignment_id
+                grade = value  # The grade should be stored in the value
+
+                if not grade:
+                    logger.warning(f"Grade is empty for assignment: {assignment_id_cleaned}")
+                
                 try:
-                    # Sending grade
+                    # Send the grade via gRPC
                     response = stub.Post(lms_pb2.PostRequest(
                         token=session['token'],
-                        assignment=lms_pb2.AssignmentUpdate(
+                        assignment_update=lms_pb2.AssignmentUpdate(
                             assignment_id=assignment_id_cleaned,
-                            grade=grade
+                            grade=grade  # Ensure this is passed correctly
                         )
                     ))
                     if response.status != "Assignment grade updated successfully":
                         logger.warning(f"Failed to post grade: {response.status}")
                 except grpc.RpcError as e:
                     return handle_grpc_error(e)
-        
+
         feedbacks = {k: v for k, v in request.form.items() if k.startswith('feedback_')}
-        for assignment_id, feedback in feedbacks.items():
+        for assignment_id, feedback_text in feedbacks.items():
             assignment_id_cleaned = assignment_id[len('feedback_'):]
             try:
                 # Sending feedback
                 response = stub.Post(lms_pb2.PostRequest(
                     token=session['token'],
-                    assignment=lms_pb2.AssignmentUpdate(
+                    assignment_update=lms_pb2.AssignmentUpdate(
                         assignment_id=assignment_id_cleaned,
-                        feedback_text=feedback
+                        feedback_text=feedback_text
                     )
                 ))
-                if response.status != "Assignment grade updated successfully":
+                if response.status != "Assignment feedback updated successfully":
                     logger.warning(f"Failed to post feedback: {response.status}")
             except grpc.RpcError as e:
                 return handle_grpc_error(e)
@@ -179,7 +184,7 @@ def render_assignments_get():
                 'filename': item.filename,
                 'file_path': item.file_path,
                 'grade': item.grade,
-                'feedback': item.feedback_text,
+                'feedback_text': item.feedback_text,
                 'submission_date': item.submission_date,
             })
 
@@ -224,21 +229,47 @@ def feedback():
                     student_name=session['username']
                 )
             ))
-            if response.status == "Success":
+            if response.status == "Student feedback submitted successfully":
                 return redirect(url_for('feedback'))
-            return "Failed to submit feedback", 400
+            else:
+                return render_template('feedback.html', error="Failed to submit feedback.")
         except grpc.RpcError as e:
             return handle_grpc_error(e)
     return render_feedback_get()
 
 def render_feedback_get():
     try:
-        response = stub.Get(lms_pb2.GetRequest(
+        # Get the user's role and username from the session
+        role = session['role']
+        username = session['username']
+
+        # Prepare the feedback request based on the role (teacher or student)
+        if role == 'teacher':
+            request_data = lms_pb2.FeedbackData(teacher_name=username)
+        elif role == 'student':
+            request_data = lms_pb2.FeedbackData(student_name=username)
+        else:
+            return "Unknown role", 400
+        
+        # Send the gRPC request with the proper feedback filter
+        response = stub.Get(lms_pb2.GetRequest( 
             token=session['token'],
-            data_type=lms_pb2.GetRequest.student_feedback
+            feedback=request_data
         ))
-        feedback_items = [{'feedback_id': item.feedback_id, 'feedback_text': item.feedback_text} for item in response.items]
-        return render_template('feedback.html', feedback=feedback_items)
+    
+        feedbacks = []
+        for item in response.feedback_items:
+            feedbacks.append({
+                'feedback_id': item.feedback_id,
+                'feedback_text': item.feedback_text,
+                'student_name': item.student_name,
+                'teacher_name': item.teacher_name,
+                'submission_date': item.submission_date,
+            })
+        logger.info(f"feedbacks fetched successfully {feedbacks}")
+        # Render the assignments template, passing assignments and role
+        return render_template('feedback.html', feedbacks=feedbacks, role=role)
+    
     except grpc.RpcError as e:
         return handle_grpc_error(e)
 

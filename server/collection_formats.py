@@ -22,7 +22,7 @@ class Assignment:
     file_id: uuid4
     submission_date: datetime
     grade: Optional[str] = None
-    feedback: Optional[str] = None
+    feedback_text: Optional[str] = None
 
     def to_dict(self) -> dict:
         # Convert datetime to string for MongoDB compatibility
@@ -41,7 +41,7 @@ class Feedback:
     def to_dict(self) -> dict:
         # Convert datetime to string for MongoDB compatibility
         feedback_dict = asdict(self)
-        feedback_dict["date"] = self.date.isoformat()
+        feedback_dict["submission_date"] = self.submission_date.isoformat()
         return feedback_dict
 
 @dataclass
