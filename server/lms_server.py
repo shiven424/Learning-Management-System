@@ -8,7 +8,8 @@ from database import (
     register_user, add_assignment, update_assignment,
      add_student_feedback,
     get_assignments, get_student_feedback,
-    get_course_materials_by_course, get_course_materials_by_teacher, add_course_material, get_student_name_from_token,get_teacher_name_from_token
+    get_course_materials_by_course, get_course_materials_by_teacher, add_course_material,
+    get_student_name_from_token,get_teacher_name_from_token, get_all_students
 )
 from collection_formats import User, Assignment, Feedback, CourseMaterial  # Import dataclasses
 from datetime import datetime
@@ -133,7 +134,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
         else:
             teacher_name = get_teacher_name_from_token(request.token)
             feedbacks = get_student_feedback(teacher_name=teacher_name)
-        logger.info(f"feedback items: {feedbacks}")
+        # logger.info(f"feedback items: {feedbacks}")
         feedback_items = [lms_pb2.FeedbackData(
             feedback_id=str(feedback.get('_id', '')),
             student_name=feedback.get('student_name', ''),
@@ -160,6 +161,21 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             upload_date=str(material.get('upload_date', ''))
             ) for i, material in enumerate(course_materials)]
         return lms_pb2.GetResponse(status="Success", course_items=course_items)
+    
+    def GetStudents(self, request, context):
+
+        # Fetch students from MongoDB (using the get_all_students() function)
+        students = get_all_students()  # Assumed to be defined in database.py
+        if not students:
+            logger.info("No students found on the server side.")
+        else:
+            logger.info(f"Fetched students from MongoDB: {students}")
+        # Convert students to protobuf format
+        student_list = []
+        for student in students:
+            student_list.append(lms_pb2.Student(username=student['username'], name=student['name']))
+        # Return the student list in the response
+        return lms_pb2.GetStudentsResponse(students=student_list)
 
     # --- Main Functions ---
     def Register(self, request, context):

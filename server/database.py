@@ -165,3 +165,25 @@ def get_teacher_name_from_token(token):
     # Assuming you have a way to map token to the student's username
     user = users_collection.find_one({"token": token})
     return user["username"] if user else None
+
+def get_all_students():
+    """
+    Fetches all registered students from the MongoDB collection.
+    Returns a list of dictionaries with 'username' and 'name'.
+    """
+    try:
+        # Query to find all students
+        students_cursor = users_collection.find({"role": "student"}, {"_id": 0, "username": 1, "name": 1})
+        
+        # Convert cursor to a list of dictionaries
+        students = list(students_cursor)
+        
+        if not students:
+            logger.info("No students found in MongoDB")
+        
+        return students
+
+    except Exception as e:
+        logger.info(f"Error fetching students from MongoDB: {e}")
+        return []
+

@@ -10,6 +10,7 @@ service LMS {
     rpc Download(DownloadFileRequest) returns (DownloadFileResponse);
     rpc Post(PostRequest) returns (StatusResponse);
     rpc Get(GetRequest) returns (GetResponse);
+    rpc GetStudents (GetStudentsRequest) returns (GetStudentsResponse);
 }
 
 message RegisterRequest {
@@ -135,3 +136,15 @@ message GetResponse {
 }
 
 
+message GetStudentsRequest {
+    string token = 1;
+}
+
+message GetStudentsResponse {
+    repeated Student students = 1;
+}
+
+message Student {
+    string username = 1;
+    string name = 2;
+}
