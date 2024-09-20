@@ -186,4 +186,25 @@ def get_all_students():
     except Exception as e:
         logger.info(f"Error fetching students from MongoDB: {e}")
         return []
+    
+def get_all_teachers():
+    """
+    Fetches all registered teachers from the MongoDB collection.
+    Returns a list of dictionaries with 'username' and 'name'.
+    """
+    try:
+        # Query to find all students
+        teachers_cursor = users_collection.find({"role": "teacher"}, {"_id": 0, "username": 1, "name": 1})
+        
+        # Convert cursor to a list of dictionaries
+        teachers = list(teachers_cursor)
+        
+        if not teachers:
+            logger.info("No teachers found in MongoDB")
+        
+        return teachers
+
+    except Exception as e:
+        logger.info(f"Error fetching teachers from MongoDB: {e}")
+        return []
 

@@ -11,6 +11,7 @@ service LMS {
     rpc Post(PostRequest) returns (StatusResponse);
     rpc Get(GetRequest) returns (GetResponse);
     rpc GetStudents (GetStudentsRequest) returns (GetStudentsResponse);
+    rpc GetTeachers (GetTeachersRequest) returns (GetTeachersResponse);
 }
 
 message RegisterRequest {
@@ -135,7 +136,6 @@ message GetResponse {
     repeated CourseMaterial course_items = 4;
 }
 
-
 message GetStudentsRequest {
     string token = 1;
 }
@@ -145,6 +145,19 @@ message GetStudentsResponse {
 }
 
 message Student {
+    string username = 1;
+    string name = 2;
+}
+
+message GetTeachersRequest {
+    string token = 1;
+}
+
+message GetTeachersResponse {
+    repeated Teacher teachers = 1;
+}
+
+message Teacher {
     string username = 1;
     string name = 2;
 }

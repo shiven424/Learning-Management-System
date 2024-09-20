@@ -130,31 +130,41 @@ def handle_assignments_post():
             except grpc.RpcError as e:
                 return handle_grpc_error(e)
     
-    if 'assignment' in request.files:
-        uploaded_file = request.files['assignment']
-        file_content = uploaded_file.read() 
+    elif session['role'] == 'student':
+        # Student uploads an assignment
+        selected_teacher = request.form.get('teacher')  # Fetch the selected teacher from the dropdown
+        if 'assignment' in request.files:
+            uploaded_file = request.files['assignment']
+            file_content = uploaded_file.read()
 
-        if uploaded_file.filename != '':
-            file_save_response = stub.Upload(lms_pb2.UploadFileRequest(
-                token=session['token'],
+            if uploaded_file.filename != '':
+                # Upload the assignment file to the server
+                file_save_response = stub.Upload(lms_pb2.UploadFileRequest(
+                    token=session['token'],
                     filename=secure_filename(uploaded_file.filename),
                     data=file_content
-            ))
+                ))
 
-            if file_save_response.status == "success":
-                response = stub.Post(lms_pb2.PostRequest(
+                if file_save_response.status == "success":
+                    # Submit the assignment with the associated teacher
+                    response = stub.Post(lms_pb2.PostRequest(
                         token=session['token'],
                         assignment=lms_pb2.AssignmentData(
                             student_name=session['username'],
+                            teacher_name=selected_teacher,  # Assign the selected teacher
                             filename=secure_filename(uploaded_file.filename),
                             file_path=file_save_response.file_path,
-                            file_id = str(file_save_response.file_id)
+                            file_id=str(file_save_response.file_id)
                         )
                     ))
-                logger.info(f"Assignment data uploaded successfully: {uploaded_file.filename}")
+                    if response.status == "Assignment submitted successfully":
+                        logger.info(f"Assignment data uploaded successfully: {uploaded_file.filename}")
+                    else:
+                        logger.error(f"Failed to submit assignment: {response.status}")
+                else:
+                    logger.error(f"File could not be uploaded: {file_save_response.status}")
             else:
-                logger.info(f"response.status: {file_save_response.status}")
-                logger.error(f"File could not be uploaded successfully: {uploaded_file.filename}")
+                logger.warning("No file uploaded.")
     
     return redirect(url_for('assignments'))
 
@@ -164,12 +174,15 @@ def render_assignments_get():
         username = session['username']
         
         if role == 'teacher':
+            teachers = []  # No teachers list needed if the user is a teacher
             request_data = lms_pb2.AssignmentData(teacher_name=username)
         elif role == 'student':
+            teachers = fetch_teachers_via_grpc()  # Fetch teachers for the student to select from
             request_data = lms_pb2.AssignmentData(student_name=username)
         else:
             return "Unknown role", 400
 
+        # Fetch assignments
         response = stub.Get(lms_pb2.GetRequest(
             token=session['token'],
             assignment=request_data
@@ -177,20 +190,41 @@ def render_assignments_get():
 
         assignments = []
         for item in response.assignment_items:
-            assignments.append({
-                'assignment_id': item.assignment_id,
-                'student_name': item.student_name,
-                'teacher_name': item.teacher_name,
-                'filename': item.filename,
-                'file_path': item.file_path,
-                'grade': item.grade,
-                'feedback_text': item.feedback_text,
-                'submission_date': item.submission_date,
-            })
+            if item.teacher_name == username or item.student_name == username:
+                assignments.append({
+                    'assignment_id': item.assignment_id,
+                    'student_name': item.student_name,
+                    'teacher_name': item.teacher_name,
+                    'filename': item.filename,
+                    'file_path': item.file_path,
+                    'grade': item.grade,
+                    'feedback_text': item.feedback_text,
+                    'submission_date': item.submission_date,
+                })
 
-        return render_template('assignments.html', assignments=assignments, role=role)
+        return render_template('assignments.html', assignments=assignments, role=role, teachers=teachers)
+    
     except grpc.RpcError as e:
         return handle_grpc_error(e)
+    
+def fetch_teachers_via_grpc():
+    """Fetches a list of teachers from the gRPC service."""
+    try:
+        # Send a request to the gRPC server to get the list of teachers
+        teacher_response = stub.GetTeachers(lms_pb2.GetTeachersRequest(token=session['token']))
+
+        teachers = [{'username': teacher.username, 'name': teacher.name} for teacher in teacher_response.teachers]
+        
+        if not teachers:
+            logger.info("No teachers returned from gRPC.")
+        else:
+            logger.info(f"Teachers fetched via gRPC: {teachers}")
+
+        return teachers
+
+    except grpc.RpcError as e:
+        logger.error(f"Error in gRPC call to fetch teachers: {e}")
+        raise
 
 @app.route('/download/<path:file_path>')
 def download_file(file_path):

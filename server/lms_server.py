@@ -9,7 +9,7 @@ from database import (
      add_student_feedback,
     get_assignments, get_student_feedback,
     get_course_materials_by_course, get_course_materials_by_teacher, add_course_material,
-    get_student_name_from_token,get_teacher_name_from_token, get_all_students
+    get_student_name_from_token,get_teacher_name_from_token, get_all_students, get_all_teachers
 )
 from collection_formats import User, Assignment, Feedback, CourseMaterial  # Import dataclasses
 from datetime import datetime
@@ -121,7 +121,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             file_path=assignment["file_path"],
             submission_date=str(assignment["submission_date"]),
             grade=assignment.get('grade', ''),
-            feedback_text=assignment.get('feedback', ''),
+            feedback_text=assignment.get('feedback_text', ''),
         ) for i, assignment in enumerate(assignments)]
         logger.info(f"Assignments retrieved successfully {assignment_items}")
         return lms_pb2.GetResponse(status="Success", assignment_items=assignment_items)
@@ -176,6 +176,21 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             student_list.append(lms_pb2.Student(username=student['username'], name=student['name']))
         # Return the student list in the response
         return lms_pb2.GetStudentsResponse(students=student_list)
+    
+    def GetTeachers(self, request, context):
+
+        # Fetch teachers from MongoDB (using the get_all_teachers() function)
+        teachers = get_all_teachers()  # Assumed to be defined in database.py
+        if not teachers:
+            logger.info("No teachers found on the server side.")
+        else:
+            logger.info(f"Fetched teachers from MongoDB: {teachers}")
+        # Convert teachers to protobuf format
+        teacher_list = []
+        for teacher in teachers:
+            teacher_list.append(lms_pb2.Teacher(username=teacher['username'], name=teacher['name']))
+        # Return the teachers list in the response
+        return lms_pb2.GetTeachersResponse(teachers=teacher_list)
 
     # --- Main Functions ---
     def Register(self, request, context):
