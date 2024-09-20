@@ -95,7 +95,8 @@ message CourseMaterial {
     string file_path = 4;
     string material_id = 5;
     string upload_date = 6;
-    bytes file_content = 7;
+    string file_id = 7;
+    bytes file_content = 8;
 }
 
 message AssignmentUpdate {

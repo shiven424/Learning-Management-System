@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Course Materials</h2>
+
+<!-- Course Material Upload Form for Teachers -->
+{% if role == 'teacher' %}
+<form method="POST" enctype="multipart/form-data">
+    <label for="material">Upload Course Material:</label>
+    <br>
+    <input type="file" name="course_material" id="material" required>
+    <br>
+    <button type="submit">Upload</button>
+</form>
+{% endif %}
+
+<!-- Display Submission Feedback -->
+{% if error %}
+<p style="color: red;">{{ error }}</p>
+{% elif success %}
+<p style="color: green;">{{ success }}</p>
+{% endif %}
+
+<!-- List of Course Materials for Download -->
+<h3>Available Course Materials:</h3>
+<ul>
+    {% for material in course_materials %}
+    <li>
+        <!-- Make the file name clickable to download -->
+        <a href="{{ url_for('download_file', file_path=material.file_path) }}">{{ material.filename }}</a>
+        
+        <div>
+            <strong>Teacher:</strong> {{ material.teacher_name }}
+        </div>
+        
+        <div>
+            <strong>Upload Date:</strong> {{ material.upload_date }}
+        </div>
+    </li>
+    {% else %}
+    <li>No course materials available.</li>
+    {% endfor %}
+</ul>
+{% endblock %}

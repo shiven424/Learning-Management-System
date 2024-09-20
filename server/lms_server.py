@@ -8,7 +8,7 @@ from database import (
     register_user, add_assignment, update_assignment,
      add_student_feedback,
     get_assignments, get_student_feedback,
-    get_course_materials_by_course, get_course_materials_by_teacher, add_course_material,
+    get_course_materials, add_course_material,
     get_student_name_from_token,get_teacher_name_from_token, get_all_students, get_all_teachers
 )
 from collection_formats import User, Assignment, Feedback, CourseMaterial  # Import dataclasses
@@ -71,19 +71,19 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
         logger.info("Student feedback submitted successfully")
         return lms_pb2.StatusResponse(status="Student feedback submitted successfully")
 
-    def _handle_post_course_materials(self, request, user_session):
-        """Handles teacher course materials submission."""
+    def _handle_post_course_material(self, request, user_session):
+        """Handles student assignment submission."""
         course_materials_data = request.content
-        course_material = CourseMaterial(
-            course_name=course_materials_data.course_name,
+        content = add_course_material(
+            teacher_name=course_materials_data.teacher_name,
             filename=course_materials_data.filename,
-            file_path=course_materials_data.file_path,
-            teacher_name=user_session['username']
+            file_path = course_materials_data.file_path,
+            file_id = course_materials_data.file_id
         )
-        add_course_material(course_material.to_dict())
-        logger.info("Course materials submitted successfully")
-        return lms_pb2.StatusResponse(status="Course materials submitted successfully")
-    
+        
+        logger.info("course_materials submitted successfully to database")
+        return lms_pb2.StatusResponse(status="course_materials submitted successfully")
+
     def _handle_upload_file(self, request, user_session)-> lms_pb2.UploadFileResponse:
         """Handles file upload."""
         file_data = request.data
@@ -147,11 +147,8 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
 
     def _handle_get_course_material(self, role, request, user_session):
         """Handles retrieving course materials."""
-        if role == "teacher":
-            course_materials = get_course_materials_by_teacher(teacher_name=user_session['username'])
-        else:
-            course_materials = get_course_materials_by_course(course_name=request.course_material.course_name)
-
+        course_materials = get_course_materials()
+        
         course_items = [lms_pb2.CourseMaterial(
             material_id=str(material.get('_id', '')),
             teacher_name=material.get('teacher_name', ''),
@@ -268,7 +265,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
                 return self._handle_update_assignment(request, user_session)
             elif request.WhichOneof('data_type') == 'student_feedback' and (role == "teacher" or role == "student"):
                 return self._handle_post_student_feedback(request, user_session)
-            elif request.WhichOneof('data_type') == 'course_material' and role == "teacher":
+            elif request.WhichOneof('data_type') == 'content':
                 return self._handle_post_course_material(request, user_session)
             else:
                 logger.warning(f"Invalid post type or insufficient permissions: {request.WhichOneof('data_type')}")
@@ -293,7 +290,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             return self._handle_get_assignments(role, user_session)
         elif request.WhichOneof('data_type') =='feedback'and (role == "teacher" or role == "student"):
             return self._handle_get_feedback(role, request)
-        elif request.WhichOneof('data_type') == 'course_material':
+        elif request.WhichOneof('data_type') == 'content' and (role == "teacher" or role == "student"):
             return self._handle_get_course_material(role, request, user_session)
         else:
             logger.warning(f"Invalid get request type or insufficient permissions: {request.WhichOneof('data_type')}")

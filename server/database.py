@@ -63,9 +63,9 @@ def get_assignments(student_name=None, teacher_name=None):
     if student_name:
         logger.info(f"Fetching assignments for student: {student_name}, query: {query}")
         query["student_name"] = student_name
-    # elif teacher_name:
-    #     logger.info(f"Fetching assignments for teacher: {teacher_name}")
-    #     query["teacher_name"] = teacher_name
+    elif teacher_name:
+        logger.info(f"Fetching assignments for teacher: {teacher_name}")
+        query["teacher_name"] = teacher_name
     
     return list(assignments_collection.find(query,
                                      {
@@ -134,27 +134,40 @@ def get_student_feedback(student_name=None, teacher_name=None):
                                                  "teacher_name": 1
                                                  }))
 
-def add_course_material(course_name, filename, file_data, file_id, teacher_id, teacher_name):
-    file_path = save_file(file_data, filename)
+def add_course_material(filename, file_path, file_id, teacher_name, course_name=None):
     course_material = CourseMaterial(
         course_name=course_name,
         filename=filename,
         file_path=file_path,
         file_id = file_id,
-        teacher_id=teacher_id,
-        teacher_name=teacher_name
+        teacher_name=teacher_name,
+        upload_date=datetime.now()
     )
-    course_material_doc_id = course_materials_collection.insert_one(course_material.to_dict()).inserted_id
-    logger.info(f"Course material added for course: {course_name}")
-    return course_material_doc_id
+    course_materials_collection.insert_one(course_material.to_dict())
+    logger.info(f"Course material added by teacher: {teacher_name}")
 
-def get_course_materials_by_teacher(teacher_name):
-    logger.info(f"Fetching course materials for teacher: {teacher_name}")
-    return list(course_materials_collection.find({"teacher_name": teacher_name}, {"_id": 0}))
+# def get_course_materials_by_teacher(teacher_name):
+#     logger.info(f"Fetching course materials for teacher: {teacher_name}")
+#     return list(course_materials_collection.find({"teacher_name": teacher_name}, {"_id": 0}))
 
-def get_course_materials_by_course(course_name):
-    logger.info(f"Fetching course materials for course: {course_name}")
-    return list(course_materials_collection.find({"course_name": course_name}, {"_id": 0}))
+# def get_course_materials_by_course(course_name):
+#     logger.info(f"Fetching course materials for course: {course_name}")
+#     return list(course_materials_collection.find({"course_name": course_name}, {"_id": 0}))
+
+def get_course_materials():
+    query = {}
+    logger.info(f"Fetching course materials:")
+    
+    return list(course_materials_collection.find(query,
+                                     {
+                                        "_id": 1,
+                                        "teacher_name": 1,  # Add this field
+                                        "filename": 1,
+                                        "file_path": 1,
+                                        "file_id": 1,
+                                        "upload_date": 1,
+                                        "course_name":1
+                                    }))
 
 def get_student_name_from_token(token):
     # Assuming you have a way to map token to the student's username

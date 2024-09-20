@@ -46,12 +46,14 @@ class Feedback:
 
 @dataclass
 class CourseMaterial:
-    course_name: str
     filename: str
     file_path: str
     file_id: uuid4
     teacher_name: str
     upload_date: datetime
+    course_name: Optional[str] = None
 
     def to_dict(self) -> dict:
+        course_material_dict = asdict(self)
+        course_material_dict["upload_date"] = self.upload_date.isoformat()
         return asdict(self)
