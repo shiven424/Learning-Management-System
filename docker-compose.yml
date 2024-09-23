@@ -11,7 +11,11 @@ services:
       - mongo
     environment:
       - MONGO_URI=mongodb://mongo:27017/lms_db
+      - OLLAMA_URI=http://ollama:11434 
     container_name: lms_server
+    volumes:
+      - server_data:/app/documents
+
 
   lms_client:
     build:
@@ -30,6 +34,20 @@ services:
     container_name: mongo
     volumes:
       - mongo_data:/data/db
+  
+  ollama:
+    build:
+      context: .
+      dockerfile: Dockerfile.llm  # Use the latest Ollama image
+    container_name: ollama
+    # volumes:
+    #   - ollama_data:/root/.ollama  # Persistent storage for Ollama models
+    ports:
+      - "11434:11434"  # Expose Ollama's API port
+    # entrypoint: ["/bin/bash", "-c"]  # Run bash as entrypoint
+    # command: ["ollama serve & ollama create tutor -f /root/.ollama/Modelfile && ollama run tutor"]  # Run the ollama command
+
 
 volumes:
   mongo_data:
+  server_data:

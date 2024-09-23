@@ -4,7 +4,7 @@ import os
 import logging
 from datetime import datetime
 from conts import FILE_STORAGE_DIR
-from collection_formats import User, Assignment, Feedback, CourseMaterial
+from collection_formats import User, Assignment, Feedback, CourseMaterial, Query
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -20,6 +20,7 @@ users_collection = db.users
 assignments_collection = db.assignments
 course_materials_collection = db.course_materials
 feedback_collection = db.feedback
+queries_collection = db.queries
 
 def save_file(file_data, filename):
     """Save the file data to a specified directory."""
@@ -221,3 +222,82 @@ def get_all_teachers():
         logger.info(f"Error fetching teachers from MongoDB: {e}")
         return []
 
+def get_last_10_queries():
+    """
+    Fetches the last 10 queries from the MongoDB collection.
+    Returns a list of dictionaries with 'query' and 'timestamp'.
+    """
+    try:
+        # Query to find the last 10 queries
+        queries_cursor = queries_collection.find().sort("timestamp", -1).limit(10)
+        
+        # Convert cursor to a list of dictionaries
+        queries = list(queries_cursor)
+        
+        if not queries:
+            logger.info("No queries found in MongoDB")
+        
+        return queries
+
+    except Exception as e:
+        logger.info(f"Error fetching queries from MongoDB: {e}")
+        return []
+
+def get_queries_by_teacher(teacher_name):
+    """
+    Fetches queries by teacher from the MongoDB collection.
+    Returns a list of dictionaries with 'query' and 'timestamp'.
+    """
+    try:
+        # Query to find queries by teacher
+        queries_cursor = queries_collection.find({"query_type": "teacher", "teacher_name": teacher_name})
+        
+        # Convert cursor to a list of dictionaries
+        queries = list(queries_cursor)
+        
+        if not queries:
+            logger.info("No queries found in MongoDB")
+        
+        return queries
+
+    except Exception as e:
+        logger.info(f"Error fetching queries from MongoDB: {e}")
+        return []
+
+def create_query(student_name, teacher_name, query_text, query_type, context_file_path)->str:
+    """
+    Creates a new query in the MongoDB collection.
+    Returns the ID of the inserted document.
+    """
+    try:
+        query = Query(
+            student_name=student_name,
+            teacher_name=teacher_name,
+            query_text=query_text,
+            query_type=query_type,
+            date=datetime.now(),
+            context_file_path=context_file_path
+        )
+        query_doc_id = queries_collection.insert_one(query.to_dict()).inserted_id
+        logger.info(f"Query created: {query_text}")
+        return str(query_doc_id)
+
+    except Exception as e:
+        logger.info(f"Error creating query in MongoDB: {e}")
+
+def update_query(query_doc_id, answer_text):
+    """
+    Updates the answer text of an existing query in the MongoDB collection.
+    Returns the updated query document.
+    """
+    try:
+        query = queries_collection.find_one({"_id": query_doc_id})
+        if query:
+            queries_collection.update_one({"_id": query_doc_id}, {"$set": {"answer_text": answer_text, "status": "answered"}})
+            logger.info(f"Query updated: {query['query_text']}")
+            return query
+        else:
+            logger.info(f"Query not found: {query_doc_id}")
+
+    except Exception as e:
+        logger.info(f"Error updating query in MongoDB: {e}")
