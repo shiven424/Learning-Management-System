@@ -24,10 +24,12 @@
                 <a href="{{ url_for('assignments') }}">Upload Assignments</a>
                 <a href="{{ url_for('feedback') }}">View Feedback</a>
                 <a href="{{ url_for('course_material') }}">View Course Materials</a>
+                <a href="{{ url_for('forum') }}">Ask a Query</a>
             {% elif session.get('role') == 'teacher' %}
                 <a href="{{ url_for('assignments') }}">View Assignments</a>
                 <a href="{{ url_for('feedback') }}">Upload Feedback</a>
                 <a href="{{ url_for('course_material') }}">Upload Course Materials</a>
+                <a href="{{ url_for('forum') }}">View Queries</a>
             {% endif %}
             
             {% if not session.get('logged_in') %}
@@ -40,5 +42,6 @@
     <main>
         {% block content %}{% endblock %}
     </main>
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
 </html>

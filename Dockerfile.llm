@@ -1,0 +1,15 @@
+# Use Ollama's official base image
+FROM ollama/ollama:latest
+
+# Set the working directory in the container
+WORKDIR /root/.ollama
+
+# Copy the Modelfile into the container
+# COPY llm/Modelfile /root/.ollama/Modelfile
+
+# Expose the port that Ollama uses (11434)
+EXPOSE 11434
+
+# Create the model from the Modelfile
+# RUN ollama create tutor -f /root/.ollama/Modelfile
+RUN ollama serve & sleep 5 && ollama run gemma2:2b

@@ -9,11 +9,13 @@ from database import (
      add_student_feedback,
     get_assignments, get_student_feedback,
     get_course_materials, add_course_material,
-    get_student_name_from_token,get_teacher_name_from_token, get_all_students, get_all_teachers
+    get_student_name_from_token,get_teacher_name_from_token, get_all_students, get_all_teachers, 
+    get_last_10_queries,get_queries_by_teacher,create_query,update_query
 )
 from collection_formats import User, Assignment, Feedback, CourseMaterial  # Import dataclasses
 from datetime import datetime
 from conts import FILE_STORAGE_DIR
+from llm_requests import get_llm_answer
 import os
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -103,6 +105,36 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             data = f.read()
         logger.info(f"File downloaded successfully")
         return lms_pb2.DownloadFileResponse(status="success", data=data)
+    
+    def _handle_post_query(self, request, user_session):
+        """Handles query submission."""
+        query_data = request.query
+        query_id = create_query(
+            student_name=user_session['username'],
+            teacher_name=query_data.teacher_name,
+            query_text=query_data.query_text,
+            query_type=query_data.query_type,
+            context_file_path=query_data.context_file_path
+        )
+        logger.info(f"Query submitted successfully")
+        if request.query_type == "llm":
+            ans = get_llm_answer(request.query_text,request.context_file_path)
+            self._handle_update_query(request, query_id = query_id, answer_text = ans)
+            logger.info(f"LLM answered successfully")
+        return lms_pb2.StatusResponse(status="success", id=str(query_id))
+    
+    def _handle_update_query(self, request, answer_text = None):
+        """Handles query update."""
+        query_update = request.query_update
+        update_query(
+            query_id=query_update.query_id,
+            answer_text = answer_text if answer_text else query_update.answer_text
+        )
+        logger.info(f"Query updated successfully")
+
+        return lms_pb2.StatusResponse(status="success")
+    
+
 
 
 # GET REQUESTS
@@ -189,6 +221,44 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
         # Return the teachers list in the response
         return lms_pb2.GetTeachersResponse(teachers=teacher_list)
 
+    def _handle_get_recent_queries(self, request):
+        logger.info("Handling recent queries request")
+        
+        # Fetch recent queries from the database
+        recent_queries = get_last_10_queries()  # Implement this in your database module
+
+        query_items = [lms_pb2.Query(
+            query_id=str(query.get('_id', '')),
+            teacher_name=query.get('teacher_name', ''),
+            student_name=query.get('student_name', ''),
+            query_text=query.get('query_text', ''),
+            query_type=query.get('query_type', ''),
+            context_file_path=query.get('context_file_path', ''),
+            status=query.get('status', ''),
+            answer_text=query.get('answer_text', ''),
+            date=str(query.get('date', ''))
+            ) for i, query in enumerate(recent_queries)]
+        return lms_pb2.GetResponse(status="Success", query_items=query_items)
+
+    
+    def _handle_get_queries_by_teacher(self, request):
+        logger.info("Handling queries request")
+
+        queries = get_queries_by_teacher()
+
+        query_items = [lms_pb2.Query(
+            query_id=str(query.get('_id', '')),
+            teacher_name=query.get('teacher_name', ''),
+            student_name=query.get('student_name', ''),
+            query_text=query.get('query_text', ''),
+            query_type=query.get('query_type', ''),
+            context_file_path=query.get('context_file_path', ''),
+            status=query.get('status', ''),
+            answer_text=query.get('answer_text', ''),
+            date=str(query.get('date', ''))
+            ) for i, query in enumerate(queries)]
+        return lms_pb2.GetResponse(status="Success", query_items=query_items)
+
     # --- Main Functions ---
     def Register(self, request, context):
         logger.info(f"Received registration request for user: {request.username} as {request.role}")
@@ -267,6 +337,10 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
                 return self._handle_post_student_feedback(request, user_session)
             elif request.WhichOneof('data_type') == 'content':
                 return self._handle_post_course_material(request, user_session)
+            elif request.WhichOneof('data_type') == 'query':
+                return self._handle_post_query(request, user_session)
+            elif request.WhichOneof('data_type') == 'query_update':
+                return self._handle_update_query(request)
             else:
                 logger.warning(f"Invalid post type or insufficient permissions: {request.WhichOneof('data_type')}")
                 return lms_pb2.StatusResponse(status="Invalid type or permission denied")
@@ -292,6 +366,11 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             return self._handle_get_feedback(role, request)
         elif request.WhichOneof('data_type') == 'content' and (role == "teacher" or role == "student"):
             return self._handle_get_course_material(role, request, user_session)
+        elif request.WhichOneof('data_type') == 'query_last':
+            return self._handle_get_recent_queries(request)
+        elif request.WhichOneof('data_type') == 'query_teacher':
+            return self._handle_get_queries_by_teacher(request)
+        
         else:
             logger.warning(f"Invalid get request type or insufficient permissions: {request.WhichOneof('data_type')}")
             return lms_pb2.GetResponse(status="Invalid request or permissions", assignment_items=[], feedback_items=[], course_items=[])

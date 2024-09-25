@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h2>Queries</h2>
+
+<!-- Form for choosing between teacher and LLM -->
+{% if session.get('role') == 'student' %}
+<form method="POST" action="{{ url_for('forum') }}">
+    <label for="query_type">Query Type:</label><br>
+    <input type="radio" id="llm" name="query_type" value="llm" checked> Ask LLM<br>
+    <input type="radio" id="teacher" name="query_type" value="teacher"> Ask Teacher<br>
+
+    <!-- Teacher Select Dropdown -->
+    <div id="teacher_select" style="display: none;">
+        <label for="teacher">Select Teacher:</label>
+        <select name="teacher" id="teacher">
+            {% for teacher in teachers %}
+            <option value="{{ teacher.username }}">{{ teacher.username }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- Course Material Dropdown -->
+    <div>
+        <label for="course_material">Select Course Material:</label>
+        <select name="course_material" id="course_material">
+            <!-- <option value="">None</option> -->
+            {% for material in course_materials %}
+            <option value="{{ material.file_path }}">{{ material.filename }}</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <label for="query">Your Query:</label>
+    <textarea name="query" id="query" rows="4" required></textarea>
+    
+    <button type="submit">Submit Query</button>
+</form>
+{% endif %}
+
+
+<!-- Display any errors or success messages -->
+{% if error %}
+<p style="color: red;">{{ error }}</p>
+{% elif success %}
+<p style="color: green;">{{ success }}</p>
+{% endif %}
+
+<!-- Display ongoing queries if any -->
+<h3>Ongoing Queries:</h3>
+<ul>
+    {% for query in queries %}
+    <li>
+        <strong>Query:</strong> {{ query.content }}<br>
+        <em>Submitted on: {{ query.date }}</em><br>
+        <em>Teacher/LLM: {{ query.teacher_name or "LLM" }}</em><br>
+        <strong>Course Material:</strong> {{ query.context_file_path or "N/A" }}<br>
+        <strong>Answer:</strong> {{ query.answer_text }}<br>
+        {% if session.get('role') == 'teacher' %}
+        <form method="POST" action="{{ url_for('forum') }}">
+            <div>
+                <!-- <input type="hidden" name="query_id" value="{{ query.query_id }}"> -->
+
+                <label for="answer_{{ query.query_id }}">answer:</label>
+                <textarea name="answer_{{ query.query_id }}" id="answer_{{ query.query_id }}" rows="3" cols="50"></textarea>
+
+                <button type="submit">Submit Answer</button>
+            </div>
+        </form>
+        {% endif %}
+    </li>
+    {% else %}
+    <li>No ongoing queries at the moment.</li>
+    {% endfor %}
+</ul>
+
+{% endblock %}
+
+<script src="{{ url_for('static', filename='main.js') }}"></script>
