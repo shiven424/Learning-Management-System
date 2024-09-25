@@ -1,15 +1,15 @@
 from flask import Blueprint, request, render_template, redirect, url_for, session
 import grpc
 import lms_pb2
-from config import logger
-from grpc_client import stub, handle_grpc_error, fetch_students_via_grpc
+from config import logger, stub
+from grpc_client import handle_grpc_error, fetch_students_via_grpc
 from routes.auth import check_session
 bp = Blueprint('feedback', __name__)
 
 @bp.route('/feedback', methods=['GET', 'POST'])
 def feedback():
     if not check_session():
-        return redirect(url_for('home'))
+        return redirect(url_for('auth.home'))
     
     if request.method == 'POST':
         feedback_text = request.form['feedback']
@@ -18,7 +18,7 @@ def feedback():
         if session['role'] == 'teacher' and not selected_student:
             # Error handling if no student is selected
             try:
-                students = fetch_students_via_grpc()  # Fetch students via gRPC
+                students = fetch_students_via_grpc(stub)  # Fetch students via gRPC
                 return render_template('feedback.html', error="Please select a student.", students=students, role=session['role'])
             except Exception as e:
                 logger.error(f"Error fetching students: {e}")
@@ -34,9 +34,9 @@ def feedback():
                 )
             ))
             if response.status == "Student feedback submitted successfully":
-                return redirect(url_for('feedback'))
+                return redirect(url_for('feedback.feedback'))
             else:
-                students = fetch_students_via_grpc()  # Fetch students again for the re-render
+                students = fetch_students_via_grpc(stub)  # Fetch students again for the re-render
                 return render_template('feedback.html', error="Failed to submit feedback.", students=students, role=session['role'])
         except grpc.RpcError as e:
             return handle_grpc_error(e)
@@ -50,7 +50,7 @@ def render_feedback_get():
         username = session['username']
 
         if role == 'teacher':
-            students = fetch_students_via_grpc()  # Fetch students via gRPC
+            students = fetch_students_via_grpc(stub)  # Fetch students via gRPC
             request_data = lms_pb2.FeedbackData(teacher_name=username)
         elif role == 'student':
             students = []  # No students list needed if the user is a student

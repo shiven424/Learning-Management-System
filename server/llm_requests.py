@@ -38,6 +38,7 @@ def get_llm_answer(query_text, pdf_file_path):
             "num_predict": 200, # Size of answer
             "temperature": 0.3  # Lower means less creative
         },
+        "keep_alive": 20,
         "stream": False # Give whole answer at once
     }
 

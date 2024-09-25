@@ -47,7 +47,7 @@ restart: stop up
 # Display logs of the running services
 .PHONY: logs
 logs:
-	$(DOCKER_COMPOSE) logs -f lms_client lms_server
+	$(DOCKER_COMPOSE) logs -f lms_client lms_server ollama --tail 100
 
 .PHONY: rebuild-server
 rebuild-server: build
@@ -56,6 +56,7 @@ rebuild-server: build
 # Rebuild and redeploy the client
 .PHONY: rebuild-client
 rebuild-client: build
+	$(DOCKER_COMPOSE) build --no-cache lms_client
 	$(DOCKER_COMPOSE) up -d lms_client
 
 

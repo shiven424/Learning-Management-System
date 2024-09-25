@@ -1,13 +1,16 @@
-from flask import Flask, render_template, request, redirect, url_for, session, send_file, Blueprint
+from flask import  session, send_file, Blueprint
 import io
 import lms_pb2
 import grpc
-from grpc_client import stub, handle_grpc_error
-from urllib.parse import quote, unquote
-import logging
+from grpc_client import handle_grpc_error
+from werkzeug.utils import secure_filename
+import os
 
-bp = Blueprint('assignments', __name__)
-logger = logging.getLogger(__name__)
+from urllib.parse import quote, unquote
+from config import stub, logger, FILE_STORAGE_DIR
+
+bp = Blueprint('file_transfer', __name__)
+
 
 
 @bp.route('/download/<path:file_path>')
@@ -36,10 +39,10 @@ def download_file(file_path):
 
 def save_assignment(file):
     filename = secure_filename(file.filename)
-    file_path = os.path.join(app.config['FILE_STORAGE_DIR'], filename)
+    file_path = os.path.join(FILE_STORAGE_DIR, filename)
     file.save(file_path)
 
 def save_course_material(file):
     filename = secure_filename(file.filename)
-    file_path = os.path.join(app.config['FILE_STORAGE_DIR'], filename)
+    file_path = os.path.join(FILE_STORAGE_DIR, filename)
     file.save(file_path)

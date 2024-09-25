@@ -1,10 +1,10 @@
 from flask import Blueprint, request, redirect, url_for, render_template, session
 import lms_pb2
 import grpc
-from grpc_client import stub, handle_grpc_error
+from grpc_client import handle_grpc_error,fetch_teachers_via_grpc
 from werkzeug.utils import secure_filename
-from config import logger
-from grpc_client import fetch_teachers_via_grpc
+from config import logger, stub
+
 bp = Blueprint('assignment', __name__)
 
 @bp.route('/assignments', methods=['GET', 'POST'])
@@ -92,7 +92,7 @@ def handle_assignments_post():
             else:
                 logger.warning("No file uploaded.")
     
-    return redirect(url_for('assignments'))
+    return redirect(url_for('assignment.assignments'))
 
 def render_assignments_get():
     try:
@@ -103,7 +103,7 @@ def render_assignments_get():
             teachers = []  # No teachers list needed if the user is a teacher
             request_data = lms_pb2.AssignmentData(teacher_name=username)
         elif role == 'student':
-            teachers = fetch_teachers_via_grpc()  # Fetch teachers for the student to select from
+            teachers = fetch_teachers_via_grpc(stub)  # Fetch teachers for the student to select from
             request_data = lms_pb2.AssignmentData(student_name=username)
         else:
             return "Unknown role", 400

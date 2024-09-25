@@ -7,20 +7,18 @@ from flask import session
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-channel = None
-stub = None
 
 def setup_grpc_client():
-    global channel, stub
     channel = grpc.insecure_channel('lms_server:50051')
     stub = lms_pb2_grpc.LMSStub(channel)
     logger.info("Client connected to LMS Server")
+    return channel, stub
 
 def handle_grpc_error(e):
     logger.error(f"gRPC error: {e.code()} - {e.details()}")
     return "An error occurred. Please try again later.", 500
 
-def fetch_teachers_via_grpc():
+def fetch_teachers_via_grpc(stub):
     """Fetches a list of teachers from the gRPC service."""
     try:
         # Send a request to the gRPC server to get the list of teachers
@@ -39,7 +37,7 @@ def fetch_teachers_via_grpc():
         logger.error(f"Error in gRPC call to fetch teachers: {e}")
         raise
 
-def fetch_students_via_grpc():
+def fetch_students_via_grpc(stub):
     """Fetches a list of students from the gRPC service."""
     try:
         # Send a request to the gRPC server to get the list of students

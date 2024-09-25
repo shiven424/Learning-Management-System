@@ -109,30 +109,43 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
     def _handle_post_query(self, request, user_session):
         """Handles query submission."""
         query_data = request.query
-        query_id = create_query(
-            student_name=user_session['username'],
-            teacher_name=query_data.teacher_name,
-            query_text=query_data.query_text,
-            query_type=query_data.query_type,
-            context_file_path=query_data.context_file_path
-        )
-        logger.info(f"Query submitted successfully")
-        if request.query_type == "llm":
-            ans = get_llm_answer(request.query_text,request.context_file_path)
-            self._handle_update_query(request, query_id = query_id, answer_text = ans)
-            logger.info(f"LLM answered successfully")
-        return lms_pb2.StatusResponse(status="success", id=str(query_id))
-    
-    def _handle_update_query(self, request, answer_text = None):
-        """Handles query update."""
-        query_update = request.query_update
-        update_query(
-            query_id=query_update.query_id,
-            answer_text = answer_text if answer_text else query_update.answer_text
-        )
-        logger.info(f"Query updated successfully")
 
-        return lms_pb2.StatusResponse(status="success")
+        logger.info(f"Received query data: {query_data}")
+
+        if query_data.query_id:  # Ensure query_id is not empty
+            logger.info(f"Updating query: {query_data.query_id} with answer_text: {query_data.answer_text}")
+            update_response = update_query(
+                query_id=query_data.query_id,
+                answer_text=query_data.answer_text
+            )
+            logger.info(f"Query updated successfully with ID: {query_data.query_id}")
+            if update_response is None:
+                logger.error("Update query returned None!")
+                return lms_pb2.StatusResponse(status="error", id=str(query_data.query_id))
+            else:
+                return lms_pb2.StatusResponse(status="success", id=str(query_data.query_id))
+
+            
+        else:
+            query_id = create_query(
+                student_name=user_session['username'],
+                teacher_name=query_data.teacher_name,
+                query_text=query_data.query_text,
+                query_type=query_data.query_type,
+                context_file_path=query_data.context_file_path
+            )
+            logger.info(f"Query submitted successfully with ID: {query_id}")
+
+            if query_data.query_type.lower() == "llm":
+                ans = get_llm_answer(query_data.query_text, query_data.context_file_path)
+                update_query(
+                    query_id=query_id,
+                    answer_text=ans
+                )
+                logger.info(f"LLM answered successfully")
+
+            return lms_pb2.StatusResponse(status="success", id=str(query_id))
+
     
 
 
@@ -327,26 +340,24 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
 
         role = user_session['role']
 
-        try:
-            # Delegate post handling based on data type and role
-            if request.WhichOneof('data_type') == 'assignment' and role == "student":
-                return self._handle_post_assignment(request, user_session)
-            elif request.WhichOneof('data_type') == 'assignment_update' and role == "teacher":
-                return self._handle_update_assignment(request, user_session)
-            elif request.WhichOneof('data_type') == 'student_feedback' and (role == "teacher" or role == "student"):
-                return self._handle_post_student_feedback(request, user_session)
-            elif request.WhichOneof('data_type') == 'content':
-                return self._handle_post_course_material(request, user_session)
-            elif request.WhichOneof('data_type') == 'query':
-                return self._handle_post_query(request, user_session)
-            elif request.WhichOneof('data_type') == 'query_update':
-                return self._handle_update_query(request)
-            else:
-                logger.warning(f"Invalid post type or insufficient permissions: {request.WhichOneof('data_type')}")
-                return lms_pb2.StatusResponse(status="Invalid type or permission denied")
-        except Exception as e:
-            logger.error(f"Error during post operation: {str(e)}")
-            return lms_pb2.StatusResponse(status="Failed due to server error")
+        # try:
+        # Delegate post handling based on data type and role
+        if request.WhichOneof('data_type') == 'assignment' and role == "student":
+            return self._handle_post_assignment(request, user_session)
+        elif request.WhichOneof('data_type') == 'assignment_update' and role == "teacher":
+            return self._handle_update_assignment(request, user_session)
+        elif request.WhichOneof('data_type') == 'student_feedback' and (role == "teacher" or role == "student"):
+            return self._handle_post_student_feedback(request, user_session)
+        elif request.WhichOneof('data_type') == 'content':
+            return self._handle_post_course_material(request, user_session)
+        elif request.WhichOneof('data_type') == 'query':
+            return self._handle_post_query(request, user_session)
+        else:
+            logger.warning(f"Invalid post type or insufficient permissions: {request.WhichOneof('data_type')}")
+            return lms_pb2.StatusResponse(status="Invalid type or permission denied")
+        # except Exception as e:
+        #     logger.error(f"Error during post operation: {str(e)}")
+        #     return lms_pb2.StatusResponse(status="Failed due to server error")
 
     def Get(self, request, context):
         logger.info(f"Received get request by token: {request.token}")

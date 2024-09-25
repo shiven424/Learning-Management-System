@@ -1,17 +1,16 @@
 from flask import Blueprint, request, redirect, url_for, render_template, session
 import lms_pb2
 import grpc
-from grpc_client import stub, handle_grpc_error
-from werkzeug.utils import secure_filename
-from config import logger
+from grpc_client import handle_grpc_error
+from config import logger, stub
 from routes.auth import check_session
 from grpc_client import fetch_teachers_via_grpc
-bp = Blueprint('assignments', __name__)
+bp = Blueprint('forum', __name__)
 
 @bp.route('/forum', methods=['GET', 'POST'])
 def forum():
     if not check_session():
-        return redirect(url_for('home'))
+        return redirect(url_for('auth.home'))
     if request.method == 'POST':
         return handle_queries_post()
     return render_queries_get()
@@ -23,7 +22,7 @@ def handle_queries_post():
         context_file_path = request.form['course_material']
         
         # Fetch teachers for error handling
-        teachers = fetch_teachers_via_grpc()
+        teachers = fetch_teachers_via_grpc(stub)
 
         try:
             if query_type == 'teacher':
@@ -80,7 +79,7 @@ def handle_queries_post():
                 # Sending answer
                 response = stub.Post(lms_pb2.PostRequest(
                     token=session['token'],
-                    query_update=lms_pb2.Query(
+                    query=lms_pb2.Query(
                         query_id=query_id_cleaned,
                         answer_text=answer_text,
                         status='answered'
@@ -96,7 +95,7 @@ def handle_queries_post():
                 return handle_grpc_error(e)
 
     # Redirect to forum after successful submission
-    return redirect(url_for('forum'))
+    return redirect(url_for('forum.forum'))
 
 
 def render_queries_get():
@@ -112,7 +111,7 @@ def render_queries_get():
                 query_teacher=request_data
             ))
         elif role == 'student':
-            teachers = fetch_teachers_via_grpc()  # Fetch teachers for the student to select from
+            teachers = fetch_teachers_via_grpc(stub)  # Fetch teachers for the student to select from
             request_data = lms_pb2.Query()
             query_response = stub.Get(lms_pb2.GetRequest(
                 token=session['token'],
@@ -172,25 +171,3 @@ def render_queries_get():
 
     return render_template('forum.html', queries=queries, teachers=teachers, course_materials=course_materials)
 
-def fetch_teachers_via_grpc():
-    """Fetches a list of teachers from the gRPC service."""
-    try:
-        # Send a request to the gRPC server to get the list of teachers
-        response = stub.GetTeachers(lms_pb2.GetTeachersRequest(token=session['token']))
-
-        teachers = []
-        if response.teachers:
-            for teacher in response.teachers:
-                teachers.append({
-                    'username': teacher.username,
-                    'name': teacher.name
-                })
-            # logger.info(f"Teachers fetched: {teachers}")
-        else:
-            logger.warning("No teachers found in the response.")
-
-        return teachers
-
-    except grpc.RpcError as e:
-        logger.error(f"Error in gRPC call to fetch teachers: {e}")
-        raise

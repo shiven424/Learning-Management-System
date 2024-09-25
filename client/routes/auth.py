@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session
 import lms_pb2
 import grpc
-from grpc_client import stub, handle_grpc_error
+from grpc_client import handle_grpc_error
+from config import stub
 
 bp = Blueprint('auth', __name__)
 

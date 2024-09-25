@@ -5,7 +5,7 @@
 
 <!-- Form for choosing between teacher and LLM -->
 {% if session.get('role') == 'student' %}
-<form method="POST" action="{{ url_for('forum') }}">
+<form method="POST" action="{{ url_for('forum.forum') }}">
     <label for="query_type">Query Type:</label><br>
     <input type="radio" id="llm" name="query_type" value="llm" checked> Ask LLM<br>
     <input type="radio" id="teacher" name="query_type" value="teacher"> Ask Teacher<br>
@@ -24,7 +24,6 @@
     <div>
         <label for="course_material">Select Course Material:</label>
         <select name="course_material" id="course_material">
-            <!-- <option value="">None</option> -->
             {% for material in course_materials %}
             <option value="{{ material.file_path }}">{{ material.filename }}</option>
             {% endfor %}
@@ -37,7 +36,6 @@
     <button type="submit">Submit Query</button>
 </form>
 {% endif %}
-
 
 <!-- Display any errors or success messages -->
 {% if error %}
@@ -57,11 +55,11 @@
         <strong>Course Material:</strong> {{ query.context_file_path or "N/A" }}<br>
         <strong>Answer:</strong> {{ query.answer_text }}<br>
         {% if session.get('role') == 'teacher' %}
-        <form method="POST" action="{{ url_for('forum') }}">
+        <form method="POST" action="{{ url_for('forum.forum') }}">
             <div>
                 <!-- <input type="hidden" name="query_id" value="{{ query.query_id }}"> -->
 
-                <label for="answer_{{ query.query_id }}">answer:</label>
+                <label for="answer_{{ query.query_id }}">Answer:</label>
                 <textarea name="answer_{{ query.query_id }}" id="answer_{{ query.query_id }}" rows="3" cols="50"></textarea>
 
                 <button type="submit">Submit Answer</button>
@@ -76,4 +74,59 @@
 
 {% endblock %}
 
-<script src="{{ url_for('static', filename='main.js') }}"></script>
+<!-- Loading screen -->
+<div id="loading-screen" style="display: none;">
+    <div class="loading-spinner"></div>
+    <p>LLM is fetching your answer</p>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('form');
+        const loadingScreen = document.getElementById('loading-screen');
+        const queryTypeLLM = document.getElementById('llm');
+
+        form.addEventListener('submit', function(event) {
+            // Check if the 'Ask LLM' option is selected
+            if (queryTypeLLM.checked) {
+                loadingScreen.style.display = 'flex'; // Show loading screen
+            }
+        });
+    });
+</script>
+
+<style>
+/* Fading background when loading */
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* Faded background */
+    z-index: 9999; /* Ensure it's above everything */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    color: white;
+    font-size: 18px;
+    text-align: center;
+}
+
+/* Spinner styling */
+.loading-spinner {
+    border: 8px solid rgba(255, 255, 255, 0.3); /* Light border */
+    border-top: 8px solid white; /* White top */
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+</style>

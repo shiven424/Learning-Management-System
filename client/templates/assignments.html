@@ -35,7 +35,7 @@
     {% for assignment in assignments %}
     <li>
         <!-- Make the file name clickable to download -->
-        <a href="{{ url_for('download_file', file_path=assignment.file_path) }}">{{ assignment.filename }}</a>
+        <a href="{{ url_for('file_transfer.download_file', file_path=assignment.file_path) }}">{{ assignment.filename }}</a>
 
         <!-- Show Grade and Feedback if available -->
         <div>
@@ -80,7 +80,7 @@
 
         <!-- Grading and Feedback Options for Teachers -->
         {% if role == 'teacher' %}
-        <form method="POST" action="{{ url_for('assignments') }}">
+        <form method="POST" action="{{ url_for('assignment.assignments') }}">
             <div>
                 <input type="hidden" name="assignment_id" value="{{ assignment.assignment_id }}">
                 

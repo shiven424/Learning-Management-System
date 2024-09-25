@@ -1,7 +1,8 @@
 from flask import Blueprint, request, render_template, redirect, url_for, session
 import grpc
 import lms_pb2
-from grpc_client import stub, handle_grpc_error
+from grpc_client import handle_grpc_error
+from config import stub
 from routes.auth import check_session
 from werkzeug.utils import secure_filename
 from config import logger
@@ -11,7 +12,7 @@ bp = Blueprint('course_material', __name__)
 def course_material():
     if not check_session():
         logger.warning("User not authenticated, redirecting to home.")
-        return redirect(url_for('home'))
+        return redirect(url_for('auth.home'))
     
     if request.method == 'POST':
         logger.info("Handling POST request for course material.")
@@ -71,7 +72,7 @@ def handle_course_material_post():
         else:
             logger.warning("No course_material file found in request.")
     
-    return redirect(url_for('course_material'))
+    return redirect(url_for('course_material.course_material'))
 
 def render_course_material_get():
     try:

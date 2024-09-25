@@ -27,7 +27,7 @@
     {% for material in course_materials %}
     <li>
         <!-- Make the file name clickable to download -->
-        <a href="{{ url_for('download_file', file_path=material.file_path) }}">{{ material.filename }}</a>
+        <a href="{{ url_for('file_transfer.download_file', file_path=material.file_path) }}">{{ material.filename }}</a>
         
         <div>
             <strong>Teacher:</strong> {{ material.teacher_name }}

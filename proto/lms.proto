@@ -130,7 +130,6 @@ message PostRequest {
         CourseMaterial content = 4;
         AssignmentUpdate assignment_update = 5;
         Query query = 6;
-        Query query_update = 7;
     }
 }
 
