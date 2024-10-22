@@ -1,13 +1,12 @@
+from config import logger, FILE_STORAGE_DIR
 from flask import  session, send_file, Blueprint
+from grpc_client import grpc_client
+from urllib.parse import quote, unquote
+from werkzeug.utils import secure_filename
+import grpc
 import io
 import lms_pb2
-import grpc
-from grpc_client import handle_grpc_error
-from werkzeug.utils import secure_filename
 import os
-
-from urllib.parse import quote, unquote
-from config import stub, logger, FILE_STORAGE_DIR
 
 bp = Blueprint('file_transfer', __name__)
 
@@ -19,7 +18,7 @@ def download_file(file_path):
         # Decode the file path to handle special characters and slashes
         file_path = unquote(file_path)
         
-        response = stub.Download(lms_pb2.DownloadFileRequest(
+        response = grpc_client.stub.Download(lms_pb2.DownloadFileRequest(
             token=session['token'],
             file_path=file_path
         ))
@@ -34,7 +33,7 @@ def download_file(file_path):
             return "File not found", 404
 
     except grpc.RpcError as e:
-        return handle_grpc_error(e)
+        return grpc_client.handle_grpc_error(e)
     
 
 def save_assignment(file):

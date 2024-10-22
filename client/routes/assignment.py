@@ -1,9 +1,9 @@
+from config import logger
 from flask import Blueprint, request, redirect, url_for, render_template, session
-import lms_pb2
-import grpc
-from grpc_client import handle_grpc_error,fetch_teachers_via_grpc
+from grpc_client import grpc_client
 from werkzeug.utils import secure_filename
-from config import logger, stub
+import grpc
+import lms_pb2
 
 bp = Blueprint('assignment', __name__)
 
@@ -27,7 +27,7 @@ def handle_assignments_post():
                 
                 try:
                     # Send the grade via gRPC
-                    response = stub.Post(lms_pb2.PostRequest(
+                    response = grpc_client.stub.Post(lms_pb2.PostRequest(
                         token=session['token'],
                         assignment_update=lms_pb2.AssignmentUpdate(
                             assignment_id=assignment_id_cleaned,
@@ -37,14 +37,14 @@ def handle_assignments_post():
                     if response.status != "Assignment grade updated successfully":
                         logger.warning(f"Failed to post grade: {response.status}")
                 except grpc.RpcError as e:
-                    return handle_grpc_error(e)
+                    return grpc_client.handle_grpc_error(e)
 
         feedbacks = {k: v for k, v in request.form.items() if k.startswith('feedback_')}
         for assignment_id, feedback_text in feedbacks.items():
             assignment_id_cleaned = assignment_id[len('feedback_'):]
             try:
                 # Sending feedback
-                response = stub.Post(lms_pb2.PostRequest(
+                response = grpc_client.stub.Post(lms_pb2.PostRequest(
                     token=session['token'],
                     assignment_update=lms_pb2.AssignmentUpdate(
                         assignment_id=assignment_id_cleaned,
@@ -54,7 +54,7 @@ def handle_assignments_post():
                 if response.status != "Assignment feedback updated successfully":
                     logger.warning(f"Failed to post feedback: {response.status}")
             except grpc.RpcError as e:
-                return handle_grpc_error(e)
+                return grpc_client.handle_grpc_error(e)
     
     elif session['role'] == 'student':
         # Student uploads an assignment
@@ -65,7 +65,7 @@ def handle_assignments_post():
 
             if uploaded_file.filename != '':
                 # Upload the assignment file to the server
-                file_save_response = stub.Upload(lms_pb2.UploadFileRequest(
+                file_save_response = grpc_client.stub.Upload(lms_pb2.UploadFileRequest(
                     token=session['token'],
                     filename=secure_filename(uploaded_file.filename),
                     data=file_content
@@ -73,7 +73,7 @@ def handle_assignments_post():
 
                 if file_save_response.status == "success":
                     # Submit the assignment with the associated teacher
-                    response = stub.Post(lms_pb2.PostRequest(
+                    response = grpc_client.stub.Post(lms_pb2.PostRequest(
                         token=session['token'],
                         assignment=lms_pb2.AssignmentData(
                             student_name=session['username'],
@@ -103,13 +103,13 @@ def render_assignments_get():
             teachers = []  # No teachers list needed if the user is a teacher
             request_data = lms_pb2.AssignmentData(teacher_name=username)
         elif role == 'student':
-            teachers = fetch_teachers_via_grpc(stub)  # Fetch teachers for the student to select from
+            teachers = grpc_client.fetch_teachers_via_grpc()  # Fetch teachers for the student to select from
             request_data = lms_pb2.AssignmentData(student_name=username)
         else:
             return "Unknown role", 400
 
         # Fetch assignments
-        response = stub.Get(lms_pb2.GetRequest(
+        response = grpc_client.stub.Get(lms_pb2.GetRequest(
             token=session['token'],
             assignment=request_data
         ))
@@ -131,4 +131,4 @@ def render_assignments_get():
         return render_template('assignments.html', assignments=assignments, role=role, teachers=teachers)
     
     except grpc.RpcError as e:
-        return handle_grpc_error(e)
+        return grpc_client.handle_grpc_error(e)

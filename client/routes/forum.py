@@ -1,10 +1,10 @@
+from config import logger
 from flask import Blueprint, request, redirect, url_for, render_template, session
-import lms_pb2
-import grpc
-from grpc_client import handle_grpc_error
-from config import logger, stub
+from grpc_client import grpc_client
 from routes.auth import check_session
-from grpc_client import fetch_teachers_via_grpc
+import grpc
+import lms_pb2
+
 bp = Blueprint('forum', __name__)
 
 @bp.route('/forum', methods=['GET', 'POST'])
@@ -22,7 +22,7 @@ def handle_queries_post():
         context_file_path = request.form['course_material']
         
         # Fetch teachers for error handling
-        teachers = fetch_teachers_via_grpc(stub)
+        teachers = grpc_client.fetch_teachers_via_grpc()
 
         try:
             if query_type == 'teacher':
@@ -36,7 +36,7 @@ def handle_queries_post():
                 logger.info(f"Selected teacher: {selected_teacher}")
 
                 # Post the query for a teacher
-                response = stub.Post(lms_pb2.PostRequest(
+                response = grpc_client.stub.Post(lms_pb2.PostRequest(
                     token=session['token'],
                     query=lms_pb2.Query(
                         student_name=session['username'],
@@ -51,7 +51,7 @@ def handle_queries_post():
             else:
                 # Post the query for LLM
                 logger.info("Posting query to LLM")
-                response = stub.Post(lms_pb2.PostRequest(
+                response = grpc_client.stub.Post(lms_pb2.PostRequest(
                     token=session['token'],
                     query=lms_pb2.Query(
                         student_name=session['username'],
@@ -69,7 +69,7 @@ def handle_queries_post():
 
         except grpc.RpcError as e:
             logger.error(f"gRPC error during post operation: {e.details()}, code: {e.code()}")
-            return handle_grpc_error(e)
+            return grpc_client.handle_grpc_error(e)
         
     elif session['role'] == 'teacher':
         answers = {k: v for k, v in request.form.items() if k.startswith('answer_')}
@@ -77,7 +77,7 @@ def handle_queries_post():
             query_id_cleaned = query_id[len('answer_'):]
             try:
                 # Sending answer
-                response = stub.Post(lms_pb2.PostRequest(
+                response = grpc_client.stub.Post(lms_pb2.PostRequest(
                     token=session['token'],
                     query=lms_pb2.Query(
                         query_id=query_id_cleaned,
@@ -92,7 +92,7 @@ def handle_queries_post():
                     return render_template('forum.html', error="Failed to update query.")
 
             except grpc.RpcError as e:
-                return handle_grpc_error(e)
+                return grpc_client.handle_grpc_error(e)
 
     # Redirect to forum after successful submission
     return redirect(url_for('forum.forum'))
@@ -106,14 +106,14 @@ def render_queries_get():
         if role == 'teacher':
             teachers = []  # No teachers list needed if the user is a teacher
             request_data = lms_pb2.Query()
-            query_response = stub.Get(lms_pb2.GetRequest(
+            query_response = grpc_client.stub.Get(lms_pb2.GetRequest(
                 token=session['token'],
                 query_teacher=request_data
             ))
         elif role == 'student':
-            teachers = fetch_teachers_via_grpc(stub)  # Fetch teachers for the student to select from
+            teachers = grpc_client.fetch_teachers_via_grpc()  # Fetch teachers for the student to select from
             request_data = lms_pb2.Query()
-            query_response = stub.Get(lms_pb2.GetRequest(
+            query_response = grpc_client.stub.Get(lms_pb2.GetRequest(
                 token=session['token'],
                 query_last=request_data
             ))
@@ -148,7 +148,7 @@ def render_queries_get():
 
         # Send the gRPC request to get course_materials
         request_data = lms_pb2.CourseMaterial()
-        response = stub.Get(lms_pb2.GetRequest(
+        response = grpc_client.stub.Get(lms_pb2.GetRequest(
             token=session['token'],
             content=request_data
         ))
@@ -167,7 +167,7 @@ def render_queries_get():
 
 
     except grpc.RpcError as e:
-        return handle_grpc_error(e)
+        return grpc_client.handle_grpc_error(e)
 
     return render_template('forum.html', queries=queries, teachers=teachers, course_materials=course_materials)
 

@@ -1,9 +1,6 @@
-import logging
-import lms_pb2
-import lms_pb2_grpc
 from authentication import authenticate, generate_token, invalidate_token
-import uuid
-from pathlib import Path
+from collection_formats import User, Assignment, Feedback, CourseMaterial  # Import dataclasses
+from conts import FILE_STORAGE_DIR
 from database import (
     register_user, add_assignment, update_assignment,
      add_student_feedback,
@@ -12,14 +9,33 @@ from database import (
     get_student_name_from_token,get_teacher_name_from_token, get_all_students, get_all_teachers, 
     get_last_10_queries,get_queries_by_teacher,create_query,update_query
 )
-from collection_formats import User, Assignment, Feedback, CourseMaterial  # Import dataclasses
-from datetime import datetime
-from conts import FILE_STORAGE_DIR
 from llm_requests import get_llm_answer
+from pathlib import Path
+from raft import raft_service
+
+import lms_pb2
+import lms_pb2_grpc
+import logging
 import os
+import uuid
+
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+from functools import wraps
+import grpc
+
+def leader_only(func):
+    """Decorator to ensure only the leader node handles the request."""
+    @wraps(func)
+    def wrapper(self, request, context, *args, **kwargs):
+        if not raft_service.is_leader():
+            context.set_code(grpc.StatusCode.UNAVAILABLE)
+            context.set_details('This node is not the leader.')
+            return grpc.unary_unary_rpc_method_handler(wrapper)
+        return func(self, request, context, *args, **kwargs)
+    return wrapper
 
 class LMSServer(lms_pb2_grpc.LMSServicer):
     def __init__(self):
@@ -53,14 +69,20 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
     def _handle_update_assignment(self, request, user_session):
         """Handles updating an assignment grade for a student."""
         assignment_update = request.assignment_update
-        update_assignment(  
-                assignment_id=assignment_update.assignment_id,
-                grade=assignment_update.grade,
-                feedback_text=assignment_update.feedback_text
-            )
+        log_entry = f"Update Grade:: Assignment: {assignment_update.assignment_id} Grade: {assignment_update.grade}"
+        if raft_service.propose_log_entry(log_entry):
+            update_assignment(  
+                    assignment_id=assignment_update.assignment_id,
+                    grade=assignment_update.grade,
+                    feedback_text=assignment_update.feedback_text
+                )
+            logger.info("Assignment grade updated successfully")
+            return lms_pb2.StatusResponse(status="Assignment grade updated successfully")
+        else:
+            logger.info("Raft log entry rejected")
+            return lms_pb2.StatusResponse(status="Raft log entry rejected")
         
-        logger.info("Assignment grade updated successfully")
-        return lms_pb2.StatusResponse(status="Assignment grade updated successfully")
+
 
     def _handle_post_student_feedback(self, request, user_session):
         """Handles teacher student feedback submission."""
@@ -204,6 +226,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             ) for i, material in enumerate(course_materials)]
         return lms_pb2.GetResponse(status="Success", course_items=course_items)
     
+    @leader_only
     def GetStudents(self, request, context):
 
         # Fetch students from MongoDB (using the get_all_students() function)
@@ -219,6 +242,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
         # Return the student list in the response
         return lms_pb2.GetStudentsResponse(students=student_list)
     
+    @leader_only
     def GetTeachers(self, request, context):
 
         # Fetch teachers from MongoDB (using the get_all_teachers() function)
@@ -273,6 +297,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
         return lms_pb2.GetResponse(status="Success", query_items=query_items)
 
     # --- Main Functions ---
+    @leader_only
     def Register(self, request, context):
         logger.info(f"Received registration request for user: {request.username} as {request.role}")
         try:
@@ -286,6 +311,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             logger.error(f"Error during registration: {str(e)}")
             return lms_pb2.StatusResponse(status="Registration failed due to server error")
 
+    @leader_only
     def Login(self, request, context):
         logger.info(f"Login attempt by user: {request.username}")
         try:
@@ -302,6 +328,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             logger.error(f"Error during login: {str(e)}")
             return lms_pb2.LoginResponse(status="Failed due to server error", token="", role="")
 
+    @leader_only
     def Logout(self, request, context):
         token = request.token
         logger.info(f"Logout request with token: {token}")
@@ -313,6 +340,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             logger.warning(f"Logout failed - Invalid token: {token}")
             return lms_pb2.StatusResponse(status="Invalid token")
 
+    @leader_only
     def Upload(self, request, context):
         logger.info(f"Received upload request by token: {request.token}")
         user_session = self.sessions.get(request.token)
@@ -321,7 +349,8 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             return lms_pb2.StatusResponse(status="Unauthorized")
         else:
             return self._handle_upload_file(request, user_session)
-    
+        
+    @leader_only
     def Download(self, request, context):
         logger.info(f"Received download request by token: {request.token}")
         user_session = self.sessions.get(request.token)
@@ -330,7 +359,8 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             return lms_pb2.StatusResponse(status="Unauthorized")
         else:
             return self._handle_download_file(request)
-            
+    
+    @leader_only
     def Post(self, request, context):
         logger.info(f"Received post request by token: {request.token}")
         user_session = self.sessions.get(request.token)
@@ -359,6 +389,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
         #     logger.error(f"Error during post operation: {str(e)}")
         #     return lms_pb2.StatusResponse(status="Failed due to server error")
 
+    @leader_only
     def Get(self, request, context):
         logger.info(f"Received get request by token: {request.token}")
         user_session = self.sessions.get(request.token)

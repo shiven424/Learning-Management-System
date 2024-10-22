@@ -1,5 +1,4 @@
 import logging
-from grpc_client import setup_grpc_client
 
 FILE_STORAGE_DIR = 'documents'
 
@@ -14,8 +13,3 @@ class Config:
 
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
-
-
-# gRPC Client Setup
-channel, stub = setup_grpc_client()

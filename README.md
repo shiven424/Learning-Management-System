@@ -18,6 +18,7 @@ Before running the system, ensure that you have the following installed:
 │   ├── static/             # Static files like CSS, JS for the Flask UI
 ├── server/
 │   ├── lms_server.py       # gRPC server handling LMS operations
+|   ├── llm_requests.py     # gRPC and api handling for LLM operations
 │   ├── authentication.py   # Authentication and session management
 │   ├── database.py         # MongoDB operations (user registration, assignments, etc.)
 ├── proto/
@@ -25,6 +26,7 @@ Before running the system, ensure that you have the following installed:
 ├── requirements.txt        # Python dependencies
 ├── Dockerfile.server       # Dockerfile for the gRPC server
 ├── Dockerfile.client       # Dockerfile for the client and Flask app
+├── Dockerfile.llm          # Dockerfile for hosting llm server (google Gemma 2Billion param model)
 ├── docker-compose.yml      # Docker Compose configuration
 └── README.md               # Project documentation
 ```
@@ -52,6 +54,7 @@ This will:
 
 - Build the Docker image for the gRPC server (`lms_server`).
 - Build the Docker image for the client Flask app (`lms_client`).
+- Build the Docker image for the llm server (`ollama`).
 - Start a MongoDB container.
 
 ### Step 3: Access the Services
@@ -61,6 +64,7 @@ Once the containers are running, you can access the services as follows:
 - **Flask App (Client UI)**: Navigate to [http://localhost:5000](http://localhost:5000) in your browser.
 - **gRPC Server**: The gRPC server is running on port 50051 for internal communication between services.
 - **MongoDB**: MongoDB is exposed on port 27017.
+- **Ollama**: Ollama server.
 
 ### Step 4: Interact with the LMS
 
@@ -68,6 +72,7 @@ Once the containers are running, you can access the services as follows:
 - **Submit Assignments**: Students can submit assignments through the client UI or via gRPC.
 - **Grade Assignments**: Teachers can grade assignments via gRPC requests.
 - **View Feedback**: Students and teachers can retrieve feedback on assignments.
+- **View/Ask Query**: Students can ask query to either LLM or teacher. Teacher can ask queries asked to them.
 
 ### Step 5: Stopping the Containers
 
@@ -110,6 +115,7 @@ Docker Compose orchestrates the following services:
 - `lms_server`: gRPC server for managing LMS functionality.
 - `lms_client`: Flask app acting as a client for the LMS.
 - `mongo`: MongoDB instance for data storage.
+- `ollama`: Ollama server for hosting llm.
 
 ### proto/lms.proto
 
@@ -141,6 +147,11 @@ Here is a quick overview of the key gRPC endpoints:
 - **Get Feedback**: Retrieve feedback for a student or teacher.
 - **Upload Course Material**: Upload teaching materials.
 - **Get Course Materials**: Retrieve course materials by course or teacher.
+- **Logout**: End the session and invalidate the token.
+- **Post Query**: Submit a query related to course content or assignments.
+- **Get Queries**: Retrieve queries and their responses.
+- **Get Students**: Retrieve a list of students.
+- **Get Teachers**: Retrieve a list of teachers.
 
 ## License
 

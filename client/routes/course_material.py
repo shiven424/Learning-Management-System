@@ -1,11 +1,12 @@
+from config import logger
 from flask import Blueprint, request, render_template, redirect, url_for, session
-import grpc
-import lms_pb2
-from grpc_client import handle_grpc_error
-from config import stub
+from grpc_client import grpc_client
 from routes.auth import check_session
 from werkzeug.utils import secure_filename
-from config import logger
+
+import grpc
+import lms_pb2
+
 bp = Blueprint('course_material', __name__)
 
 @bp.route('/course-material', methods=['GET', 'POST'])
@@ -34,7 +35,7 @@ def handle_course_material_post():
                 try:
                     # Upload the course_material file to the server
                     logger.info(f"Uploading file: {uploaded_file.filename} to the server.")
-                    file_save_response = stub.Upload(lms_pb2.UploadFileRequest(
+                    file_save_response = grpc_client.stub.Upload(lms_pb2.UploadFileRequest(
                         token=session['token'],
                         filename=secure_filename(uploaded_file.filename),
                         data=file_content
@@ -45,7 +46,7 @@ def handle_course_material_post():
                     if file_save_response.status == "success":
                         # Submit the course_material with the associated teacher
                         logger.info(f"Submitting course material for teacher: {session['username']}")
-                        response = stub.Post(lms_pb2.PostRequest(
+                        response = grpc_client.stub.Post(lms_pb2.PostRequest(
                             token=session['token'],
                             content=lms_pb2.CourseMaterial(
                                 teacher_name=session['username'],
@@ -88,7 +89,7 @@ def render_course_material_get():
             return "Unknown role", 400
 
         # Send the gRPC request to get course_materials
-        response = stub.Get(lms_pb2.GetRequest(
+        response = grpc_client.stub.Get(lms_pb2.GetRequest(
             token=session['token'],
             content=request_data
         ))
@@ -122,4 +123,4 @@ def render_course_material_get():
                 
         return render_template('course_material.html', course_materials=course_materials, role=role)
     except grpc.RpcError as e:
-        return handle_grpc_error(e)
+        return grpc_client.handle_grpc_error(e)

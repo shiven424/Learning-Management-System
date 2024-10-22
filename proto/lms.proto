@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package lms;
 
+// ---- LMS Service Definitions ----
 service LMS {
     rpc Register(RegisterRequest) returns (StatusResponse);
     rpc Login(LoginRequest) returns (LoginResponse);
@@ -10,15 +11,23 @@ service LMS {
     rpc Download(DownloadFileRequest) returns (DownloadFileResponse);
     rpc Post(PostRequest) returns (StatusResponse);
     rpc Get(GetRequest) returns (GetResponse);
-    rpc GetStudents (GetStudentsRequest) returns (GetStudentsResponse);
-    rpc GetTeachers (GetTeachersRequest) returns (GetTeachersResponse);
+    rpc GetStudents(GetStudentsRequest) returns (GetStudentsResponse);
+    rpc GetTeachers(GetTeachersRequest) returns (GetTeachersResponse);
 }
 
+// ---- Raft Service Definitions ----
+service RaftService {
+    rpc RequestVote (VoteRequest) returns (VoteResponse);  // Request for votes in leader election
+    rpc AppendEntries (AppendEntriesRequest) returns (AppendEntriesResponse);  // Append logs
+    rpc GetLeader (Empty) returns (LeaderInfo);  // Get current leader info
+}
+
+// ---- LMS Message Definitions ----
 message RegisterRequest {
     string username = 1;
     string password = 2;
     string role = 3;  // student or teacher
-    string name = 4;  // Additional field for user name
+    string name = 4;
 }
 
 message LoginRequest {
@@ -29,7 +38,7 @@ message LoginRequest {
 message LoginResponse {
     string status = 1;
     string token = 2;
-    string role = 3;  // Include the role
+    string role = 3;
 }
 
 message LogoutRequest {
@@ -38,10 +47,9 @@ message LogoutRequest {
 
 message StatusResponse {
     string status = 1;
-    string error_code = 2; // Optional field for error codes
+    string error_code = 2;
     string id = 3;
 }
-
 
 message UploadFileRequest {
     string token = 1;
@@ -65,28 +73,24 @@ message DownloadFileResponse {
     bytes data = 2;
 }
 
-// Main field types
-
 message AssignmentData {
     string student_name = 1;
     string teacher_name = 2;
     string filename = 3;
-    string file_path = 4;  // Path to the uploaded file
-    string grade = 5;      // Field for grade
-    string feedback_text = 6;  // Field for feedback
+    string file_path = 4;
+    string grade = 5;
+    string feedback_text = 6;
     string submission_date = 7;
     string assignment_id = 8;
     string file_id = 9;
-
 }
 
 message FeedbackData {
     string student_name = 1;
-    string teacher_name = 2;  // Added the type
-    string feedback_text = 3;  // Text of the feedback
+    string teacher_name = 2;
+    string feedback_text = 3;
     string submission_date = 4;
     string feedback_id = 5;
-    
 }
 
 message CourseMaterial {
@@ -101,10 +105,9 @@ message CourseMaterial {
 }
 
 message AssignmentUpdate {
-    string grade = 1;      // Field for grade
-    string feedback_text = 2;  // Field for feedback
-    string assignment_id = 3; 
-
+    string grade = 1;
+    string feedback_text = 2;
+    string assignment_id = 3;
 }
 
 message Query {
@@ -117,27 +120,22 @@ message Query {
     string status = 7;
     string answer_text = 8;
     string query_id = 9;
-    
 }
 
-
-// Post requests
 message PostRequest {
     string token = 1;
-    oneof data_type {  // Define different data types that can be posted
+    oneof data_type {
         AssignmentData assignment = 2;
-        FeedbackData student_feedback = 3;  // Updated to include feedback
+        FeedbackData student_feedback = 3;
         CourseMaterial content = 4;
         AssignmentUpdate assignment_update = 5;
         Query query = 6;
     }
 }
 
-
-// Get requests
 message GetRequest {
     string token = 1;
-    oneof data_type {  // Define types of data that can be fetched
+    oneof data_type {
         AssignmentData assignment = 2;
         FeedbackData feedback = 3;
         CourseMaterial content = 4;
@@ -146,14 +144,12 @@ message GetRequest {
     }
 }
 
-
 message GetResponse {
     string status = 1;
-    repeated AssignmentData assignment_items = 2;  // Existing data items for assignments and course materials
-    repeated FeedbackData feedback_items = 3;  // New feedback items
+    repeated AssignmentData assignment_items = 2;
+    repeated FeedbackData feedback_items = 3;
     repeated CourseMaterial course_items = 4;
     repeated Query query_items = 5;
-
 }
 
 message GetStudentsRequest {
@@ -180,4 +176,43 @@ message GetTeachersResponse {
 message Teacher {
     string username = 1;
     string name = 2;
+}
+
+// ---- Raft Message Definitions ----
+message VoteRequest {
+    int32 term = 1;
+    string candidate_id = 2;
+    int32 last_log_index = 3;
+    int32 last_log_term = 4;
+}
+
+message VoteResponse {
+    int32 term = 1;
+    bool vote_granted = 2;
+}
+
+message AppendEntriesRequest {
+    int32 term = 1;
+    string leader_id = 2;
+    int32 prev_log_index = 3;
+    int32 prev_log_term = 4;
+    repeated LogEntry entries = 5;
+    int32 commit_index = 6;
+}
+
+message AppendEntriesResponse {
+    int32 term = 1;
+    bool success = 2;
+    string node_id = 3;
+}
+
+message LogEntry {
+    int32 term = 1;
+    string data = 2;
+}
+
+message Empty {}
+
+message LeaderInfo {
+    string leader_address = 1;
 }

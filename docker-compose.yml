@@ -1,20 +1,56 @@
 version: '3.8'
 
 services:
-  lms_server:
+  lms_server_1:
     build:
       context: .
       dockerfile: Dockerfile.server
     ports:
-      - "50051:50051"
+      - "50051:5000"
     depends_on:
       - mongo
     environment:
       - MONGO_URI=mongodb://mongo:27017/lms_db
-      - OLLAMA_URI=http://ollama:11434 
-    container_name: lms_server
+      - OLLAMA_URI=http://ollama:11434
+      - SERVER_NAME=lms_server_1 
+    container_name: lms_server_1
     volumes:
       - server_data:/app/documents
+      - log_data_1:/app/logs
+    
+  lms_server_2:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "50052:5000"
+    depends_on:
+      - mongo
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/lms_db
+      - OLLAMA_URI=http://ollama:11434
+      - SERVER_NAME=lms_server_2
+    container_name: lms_server_2
+    volumes:
+      - server_data:/app/documents
+      - log_data_2:/app/logs
+
+  lms_server_3:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "50053:5000"
+    depends_on:
+      - mongo
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/lms_db
+      - OLLAMA_URI=http://ollama:11434
+      - SERVER_NAME=lms_server_3
+    container_name: lms_server_3
+    volumes:
+      - server_data:/app/documents
+      - log_data_3:/app/logs
 
 
   lms_client:
@@ -23,8 +59,6 @@ services:
       dockerfile: Dockerfile.client
     ports:
       - "5000:5000"
-    depends_on:
-      - lms_server
     container_name: lms_client
 
   mongo:
@@ -40,8 +74,8 @@ services:
       context: .
       dockerfile: Dockerfile.llm  # Use the latest Ollama image
     container_name: ollama
-    # volumes:
-    #   - ollama_data:/root/.ollama  # Persistent storage for Ollama models
+    volumes:
+      - ollama_data:/root/.ollama  # Persistent storage for Ollama models
     ports:
       - "11434:11434"  # Expose Ollama's API port
     # entrypoint: ["/bin/bash", "-c"]  # Run bash as entrypoint
@@ -51,3 +85,7 @@ services:
 volumes:
   mongo_data:
   server_data:
+  log_data_1:
+  log_data_2:
+  log_data_3:
+  ollama_data:
