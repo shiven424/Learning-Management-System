@@ -1,5 +1,5 @@
 from config import logger
-from flask import Blueprint, request, redirect, url_for, render_template, session
+from flask import Blueprint, request, redirect, url_for, render_template, session, jsonify
 from grpc_client import grpc_client
 from routes.auth import check_session
 import grpc
@@ -7,31 +7,33 @@ import lms_pb2
 
 bp = Blueprint('forum', __name__)
 
-@bp.route('/forum', methods=['GET', 'POST'])
+@bp.route('/api/forum', methods=['GET', 'POST'])
 def forum():
     if not check_session():
-        return redirect(url_for('auth.home'))
+        return jsonify({"error": "Unauthorized access."}), 401
     if request.method == 'POST':
         return handle_queries_post()
     return render_queries_get()
 
 def handle_queries_post():
     if session['role'] == 'student':
-        query_type = request.form['query_type']
-        query_content = request.form['query']
-        context_file_path = request.form['course_material']
+        data = request.json  # Parse JSON data from the frontend
+
+        query_type = data.get('query_type')
+        query_content = data.get('query')
+        context_file_path = data.get('course_material')
         
         # Fetch teachers for error handling
         teachers = grpc_client.fetch_teachers_via_grpc()
 
         try:
             if query_type == 'teacher':
-                selected_teacher = request.form.get('teacher')
+                selected_teacher = request.json.get('teacher')
 
                 # Ensure a teacher is selected
                 if not selected_teacher:
                     logger.warning("No teacher selected.")
-                    return render_template('forum.html', error="Please select a teacher.", teachers=teachers)
+                    return jsonify({"error": "Please select a teacher.", "teachers": teachers}), 400
 
                 logger.info(f"Selected teacher: {selected_teacher}")
 
@@ -65,37 +67,36 @@ def handle_queries_post():
             # Check the response and handle accordingly
             if response.status != "success":
                 logger.error(f"Failed to submit query: {response.status}")
-                return render_template('forum.html', error="Failed to submit query.", teachers=teachers)
+                return jsonify({"error": "Failed to submit query."}), 500
 
         except grpc.RpcError as e:
             logger.error(f"gRPC error during post operation: {e.details()}, code: {e.code()}")
             return grpc_client.handle_grpc_error(e)
         
     elif session['role'] == 'teacher':
-        answers = {k: v for k, v in request.form.items() if k.startswith('answer_')}
-        for query_id, answer_text in answers.items():
-            query_id_cleaned = query_id[len('answer_'):]
-            try:
-                # Sending answer
-                response = grpc_client.stub.Post(lms_pb2.PostRequest(
-                    token=session['token'],
-                    query=lms_pb2.Query(
-                        query_id=query_id_cleaned,
-                        answer_text=answer_text,
-                        status='answered'
-                    )
-                ))
+        answer_text = request.json.get('answer_text')
+        query_id = request.json.get('query_id')   
+        try:
+            # Sending answer
+            response = grpc_client.stub.Post(lms_pb2.PostRequest(
+                token=session['token'],
+                query=lms_pb2.Query(
+                    query_id=query_id,
+                    answer_text=answer_text,
+                    status='answered'
+                )
+            ))
                 
-                # Check the response and handle accordingly
-                if response.status != "success":
-                    logger.error(f"Failed to update query: {response.status}")
-                    return render_template('forum.html', error="Failed to update query.")
+            # Check the response and handle accordingly
+            if response.status != "success":
+                logger.error(f"Failed to update query: {response.status}")
+                return jsonify({"error": "Failed to update query."}), 500
 
-            except grpc.RpcError as e:
-                return grpc_client.handle_grpc_error(e)
+        except grpc.RpcError as e:
+            return grpc_client.handle_grpc_error(e)
 
     # Redirect to forum after successful submission
-    return redirect(url_for('forum.forum'))
+    return jsonify({"status": "success"}), 200
 
 
 def render_queries_get():
@@ -118,7 +119,7 @@ def render_queries_get():
                 query_last=request_data
             ))
         else:
-            return "Unknown role", 400
+            return jsonify({"error": "Unknown role"}), 400
 
         queries = []
         for item in query_response.query_items:
@@ -165,9 +166,11 @@ def render_queries_get():
         # else:
         #     logger.warning("No course_materials found in the response.")
 
+        return jsonify({
+            "queries": queries,
+            "teachers": teachers,
+            "course_materials": course_materials
+        }), 200
 
     except grpc.RpcError as e:
         return grpc_client.handle_grpc_error(e)
-
-    return render_template('forum.html', queries=queries, teachers=teachers, course_materials=course_materials)
-

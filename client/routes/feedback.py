@@ -1,5 +1,5 @@
 from config import logger
-from flask import Blueprint, request, render_template, redirect, url_for, session
+from flask import Blueprint, request, render_template, redirect, url_for, session, jsonify
 from grpc_client import grpc_client
 from routes.auth import check_session
 import grpc
@@ -7,23 +7,22 @@ import lms_pb2
 
 bp = Blueprint('feedback', __name__)
 
-@bp.route('/feedback', methods=['GET', 'POST'])
+@bp.route('/api/feedback', methods=['GET', 'POST'])
 def feedback():
     if not check_session():
-        return redirect(url_for('auth.home'))
+        return jsonify({"error": "Unauthorized"}), 401
     
     if request.method == 'POST':
-        feedback_text = request.form['feedback']
-        selected_student = request.form.get('student')  # Fetch the selected student
+        feedback_text = request.json.get('feedback')
+        selected_student = request.json.get('student')
 
         if session['role'] == 'teacher' and not selected_student:
             # Error handling if no student is selected
             try:
-                students = grpc_client.fetch_students_via_grpc()  # Fetch students via gRPC
-                return render_template('feedback.html', error="Please select a student.", students=students, role=session['role'])
+                return jsonify({"error": "Please select a student."}), 400
             except Exception as e:
                 logger.error(f"Error fetching students: {e}")
-                return render_template('feedback.html', error="Failed to fetch students.", role=session['role'])
+                return jsonify({"error": "Failed to fetch students."}), 500
 
         try:
             # Submit feedback to gRPC service
@@ -35,10 +34,9 @@ def feedback():
                 )
             ))
             if response.status == "Student feedback submitted successfully":
-                return redirect(url_for('feedback.feedback'))
+                return jsonify({"success": True}), 200
             else:
-                students = grpc_client.fetch_students_via_grpc()  # Fetch students again for the re-render
-                return render_template('feedback.html', error="Failed to submit feedback.", students=students, role=session['role'])
+                return jsonify({"success": False}), 400
         except grpc.RpcError as e:
             return grpc_client.handle_grpc_error(e)
 
@@ -79,7 +77,7 @@ def render_feedback_get():
         # logger.info(f"Feedbacks fetched successfully {feedbacks}")
         
         # Render the feedback template, passing feedbacks, role, and students
-        return render_template('feedback.html', feedbacks=feedbacks, role=role, students=students)
+        return jsonify({"feedbacks": feedbacks, "role": role, "students": students}), 200
 
     except grpc.RpcError as e:
         return grpc_client.handle_grpc_error(e)

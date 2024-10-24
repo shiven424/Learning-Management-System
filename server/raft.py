@@ -142,22 +142,50 @@ class RaftNode(RaftServiceServicer):
             time.sleep(self.heartbeat_interval)
 
     def append_entries(self, peer: str, entries: List[LogEntry]):
-        """Send AppendEntries RPC to a peer."""
+        """Send AppendEntries RPC to a peer based on proto definition."""
         stub = self._get_stub(peer)
-        prev_log_index = len(self.log) - 1 if self.log else -1
+
+        # Determine the prev_log_index and prev_log_term to send in the request
+        prev_log_index = self.next_index[peer] - 1
+        prev_log_term = self.log[prev_log_index].term if prev_log_index >= 0 else 0
+
         request = AppendEntriesRequest(
             term=self.current_term,
             leader_id=self.node_id,
             prev_log_index=prev_log_index,
-            prev_log_term=self.log[-1].term if self.log else 0,
+            prev_log_term=prev_log_term,
             entries=entries,
             commit_index=self.commit_index
         )
         try:
+            # Send AppendEntries RPC to the follower
             response = stub.AppendEntries(request)
-            self.handle_append_response(response)
+            if response.success:
+                # Log replicated successfully, update next_index and match_index
+                self.match_index[peer] = prev_log_index + len(entries)
+                self.next_index[peer] = self.match_index[peer] + 1
+                logger.info(f"AppendEntries successful for {peer}. Updated next_index to {self.next_index[peer]}. {response.success}")
+            else:
+                # Log mismatch, decrement next_index and retry
+                self.next_index[peer] = max(0, self.next_index[peer] - 1)
+                logger.warning(f"AppendEntries failed for {peer}, retrying with next_index={self.next_index[peer]}")
+                
+                # Retry sending entries if there's still more log to send
+                if self.next_index[peer] >= 0:
+                    self.append_entries(peer, self.log[self.next_index[peer]:])
+
+            # Handle cases where the follower has a higher term (leader step down)
+            if response.term > self.current_term:
+                logger.info(f"Term out of date. Stepping down. Peer term: {response.term}, current term: {self.current_term}")
+                self.current_term = response.term
+                self.role = "Follower"
+                self.save_term()
+
+            return response
+
         except grpc.RpcError as e:
-            logger.info(f"Failed to append entries to {peer}: {e}")
+            logger.error(f"Failed to append entries to {peer}: {e}")
+            return False
 
     def handle_append_response(self, response: AppendEntriesResponse):
         """Handle the response of an AppendEntries RPC."""
@@ -172,33 +200,53 @@ class RaftNode(RaftServiceServicer):
         return RaftServiceStub(channel)
 
     def propose_log_entry(self, data) -> bool:
-        """Propose a new log entry to be committed."""
+        """Propose a new log entry to be committed by the leader."""
         if self.role != "Leader":
             logger.info(f"Node {self.node_id} is not the leader and cannot propose log entry.")
             return False
 
-        # Create a new log entry
+        # Create a new log entry with the current term and data
         new_log_entry = LogEntry(term=self.current_term, data=data)
         self.log.append(new_log_entry)
-        self.save_log()  # Save updated log
+        self.save_log()  # Persist the updated log to disk or storage
 
-        # Send AppendEntries to followers
-        votes_received = 1  # Count self as a vote
-        for peer in self.peers:
-            # Calculate missing log entries if peer log is too short
-            if len(peer.log) < len(self.log):
-                missing_entries = self.log[len(peer.log):]  # All missing entries for this peer
-                response = self.append_entries(peer, missing_entries)
+        # Send AppendEntries RPC to all peers
+        votes_received = 1  # Start with the leader's own vote
+
+        for peer in self.peers:  # Assuming peers is a list of peer addresses (host:port)
+            if peer not in self.next_index:
+                logger.error(f"Peer {peer} has no next_index entry.")
+                continue
+
+            # If the peer's log is shorter, send all missing entries
+            if self.next_index[peer] < len(self.log):
+                # Get the missing log entries for this peer
+                missing_entries = self.log[self.next_index[peer]:]  # Fetch missing entries starting from next_index
+                response = self.append_entries(peer, missing_entries)  # Send AppendEntries with missing entries
             else:
-                response = self.append_entries(peer, [new_log_entry])  # Just the new log entry
+                # Send only the new log entry if logs are consistent
+                response = self.append_entries(peer, [new_log_entry])
 
+            # Check if response is None or has a success attribute
+            if response is None:
+                logger.error(f"No response received from peer {peer}.")
+                continue  # Skip processing for this peer if no response
+
+            # Process the response
             if response.success:
                 votes_received += 1
+            elif response.term > self.current_term:
+                # If the peer's term is higher, the current leader must step down
+                logger.info(f"Term out of date. Stepping down. Peer term: {response.term}, current term: {self.current_term}")
+                self.current_term = response.term
+                self.role = "Follower"
+                self.save_term()
+                return False
 
-        # Commit the log entry if a majority is reached
+        # If a majority of votes are received, commit the log entry
         if votes_received > len(self.peers) // 2:
-            self.commit_index += 1  # Update commit index
-            self.save_log()  # Save log after commit
+            self.commit_index += 1  # Increment commit index
+            self.save_log()  # Persist the log after committing
             logger.info(f"Log entry committed by majority. Data: {data}")
             return True
         else:
@@ -216,60 +264,56 @@ class RaftNode(RaftServiceServicer):
             return VoteResponse(term=self.current_term, vote_granted=True)
         return VoteResponse(term=self.current_term, vote_granted=False)
 
-    def AppendEntries(self, request, context):
-        """
-        Handle AppendEntries RPC from the leader. This includes both heartbeats and log replication.
-        """
-        logger.debug(f"Received AppendEntries request: {request}")
+    def AppendEntries(self, request: AppendEntriesRequest, context):
+        """Follower handling of AppendEntries RPC based on proto definition."""
 
-        # Reject if the leader's term is less than the current term
+        # Reject if the leader's term is outdated
         if request.term < self.current_term:
-            logger.warning(f"Rejected AppendEntries from leader with term {request.term}. "
-                        f"Current term is {self.current_term}.")
+            logger.warning(f"Received outdated term: {request.term}. Current term: {self.current_term}.")
             return AppendEntriesResponse(term=self.current_term, success=False, node_id=self.node_id)
 
-        # Accept the leader's term and become a follower
-        self.role = "Follower"
-        self.current_term = request.term  # Update current term
+        # If the leader's term is higher, update the current term and become a follower
+        if request.term > self.current_term:
+            logger.info(f"Term updated: {self.current_term} -> {request.term}. Becoming follower.")
+            self.current_term = request.term
+            self.state = 'follower'
+            self.voted_for = None
+            self.save_state()
 
-        # Reset the election timer
-        self.election_timer.cancel()
-        self.election_timer = threading.Timer(self._random_timeout(), self.start_election)
-        self.election_timer.start()
+        # Check log consistency with prev_log_index and prev_log_term
+        if request.prev_log_index >= 0:
+            if len(self.log) <= request.prev_log_index:
+                # Log is too short, reject the request
+                logger.warning(f"Log consistency failed: Follower's log too short (length {len(self.log)}).")
+                return AppendEntriesResponse(term=self.current_term, success=False, node_id=self.node_id)
 
-        # Check log consistency: Ensure log matches up to prev_log_index
-        if (request.prev_log_index == -1 or
-            (request.prev_log_index < len(self.log) and self.log[request.prev_log_index].term == request.prev_log_term)):
-            
-            # Log is consistent, append new entries
-            logger.debug(f"Log consistency check passed for prev_log_index {request.prev_log_index}. Appending entries.")
-            
-            # Truncate the log at prev_log_index and append new entries
-            self.log = self.log[:request.prev_log_index + 1] + list(request.entries)
-            
-            # Update commit index
-            self.commit_index = min(request.commit_index, len(self.log) - 1)
-            
-            # Save updated log to disk
-            self.save_log()
+            if self.log[request.prev_log_index].term != request.prev_log_term:
+                # Log term mismatch at prev_log_index
+                logger.warning(f"Log consistency failed: Term mismatch at index {request.prev_log_index}.")
+                # Optional: Truncate log if necessary (depending on your protocol logic)
+                self.log = self.log[:request.prev_log_index]
+                self.save_log()  # Persist the truncated log
+                return AppendEntriesResponse(term=self.current_term, success=False, node_id=self.node_id)
 
-            logger.debug(f"Entries appended successfully. New log length: {len(self.log)}.")
-            return AppendEntriesResponse(term=self.current_term, success=True, node_id=self.node_id)
+        # Append new log entries (if any) after prev_log_index
+        new_entries = [LogEntry(term=entry.term, data=entry.data) for entry in request.entries]  # Convert to list of LogEntry
+        if new_entries:
+            logger.info(f"Appending {len(new_entries)} new entries to the log.")
+            # Remove conflicting entries and append new ones
+            self.log = self.log[:request.prev_log_index + 1] + new_entries
+            self.save_log()  # Persist the updated log
 
-        # Handle log inconsistency
-        if request.prev_log_index >= len(self.log):
-            logger.info(f"Log inconsistency: Follower's log is too short. "
-                        f"Follower log length is {len(self.log)}, but received prev_log_index {request.prev_log_index}.")
-        else:
-            logger.info(f"Log inconsistency: Term mismatch at index {request.prev_log_index}. "
-                        f"Follower's log term is {self.log[request.prev_log_index].term}, "
-                        f"but leader's prev_log_term is {request.prev_log_term}.")
-        
-        # Log consistency check failed, request missing entries
-        logger.warning(f"Log consistency check failed for prev_log_index {request.prev_log_index}. Rejecting AppendEntries.")
-        
-        return AppendEntriesResponse(term=self.current_term, success=False, node_id=self.node_id)
+        # Update commit index and apply new entries to the state machine
+        if request.commit_index > self.commit_index:
+            # Update commit index only if it's within the bounds of the log
+            if request.commit_index < len(self.log):
+                self.commit_index = request.commit_index
+            else:
+                self.commit_index = len(self.log) - 1  # Adjust to the last log index
 
+        # Return success after log has been updated
+        logger.info("AppendEntries succeeded, sending success response.")
+        return AppendEntriesResponse(term=self.current_term, success=True, node_id=self.node_id)
 
     def GetLeader(self, request, context):
         """Handle GetLeader RPC."""
