@@ -280,6 +280,11 @@ class RaftNode(RaftServiceServicer):
             self.voted_for = None
             self.save_state()
 
+        # Reset the election timer
+        self.election_timer.cancel()
+        self.election_timer = threading.Timer(self._random_timeout(), self.start_election)
+        self.election_timer.start()
+
         # Check log consistency with prev_log_index and prev_log_term
         if request.prev_log_index >= 0:
             if len(self.log) <= request.prev_log_index:
