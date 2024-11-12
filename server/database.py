@@ -91,7 +91,7 @@ def update_assignment(assignment_id, grade=None, feedback_text=None):
     if feedback_text:
         update_fields['feedback_text'] = feedback_text
     
-    logger.info(f"Updating assignment: {assignment_id} with fields: {update_fields}")
+    # logger.info(f"Updating assignment: {assignment_id} with fields: {update_fields}")
     
     # Perform the database update
     result = assignments_collection.update_one(

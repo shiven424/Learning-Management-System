@@ -69,7 +69,10 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
     def _handle_update_assignment(self, request, user_session):
         """Handles updating an assignment grade for a student."""
         assignment_update = request.assignment_update
-        log_entry = f"Update Grade:: Assignment: {assignment_update.assignment_id} Grade: {assignment_update.grade}"
+        if assignment_update.feedback_text:
+            log_entry = f"Update Grade:: Assignment: {assignment_update.assignment_id} Feedback: {assignment_update.feedback_text}"
+        elif assignment_update.grade:
+            log_entry = f"Update Grade:: Assignment: {assignment_update.assignment_id} Grade: {assignment_update.grade}"
         if raft_service.propose_log_entry(log_entry):
             update_assignment(  
                     assignment_id=assignment_update.assignment_id,
@@ -179,7 +182,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             assignments = get_assignments(student_name=user_session['username'])
         elif role == "teacher":
             assignments = get_assignments()
-        logger.info(f"assignment items: {assignments}")
+        # logger.info(f"assignment items: {assignments}")
         assignment_items = [lms_pb2.AssignmentData(
             assignment_id=str(assignment['_id']),
             student_name=assignment["student_name"],
@@ -190,7 +193,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
             grade=assignment.get('grade', ''),
             feedback_text=assignment.get('feedback_text', ''),
         ) for i, assignment in enumerate(assignments)]
-        logger.info(f"Assignments retrieved successfully {assignment_items}")
+        # logger.info(f"Assignments retrieved successfully {assignment_items}")
         return lms_pb2.GetResponse(status="Success", assignment_items=assignment_items)
 
     def _handle_get_feedback(self, role, request):
@@ -333,7 +336,7 @@ class LMSServer(lms_pb2_grpc.LMSServicer):
         token = request.token
         logger.info(f"Logout request with token: {token}")
         if token in self.sessions:
-            invalidate_token(token, self.sessions)
+            invalidate_token(token)
             logger.info(f"Logout successful for token: {token}")
             return lms_pb2.StatusResponse(status="Logged out successfully")
         else:
