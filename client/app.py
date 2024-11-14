@@ -2,7 +2,7 @@ from flask import Flask
 from config import Config
 from routes import auth, assignment, feedback, course_material, dashboard, forum, file_transfer
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static/react')
 app.config.from_object(Config)
 
 # Register Blueprints

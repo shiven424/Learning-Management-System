@@ -1,5 +1,5 @@
 from config import logger
-from flask import Blueprint, request, render_template, redirect, url_for, session
+from flask import Blueprint, request, render_template, redirect, url_for, session, jsonify
 from grpc_client import grpc_client
 from routes.auth import check_session
 from werkzeug.utils import secure_filename
@@ -7,13 +7,13 @@ from werkzeug.utils import secure_filename
 import grpc
 import lms_pb2
 
-bp = Blueprint('course_material', __name__)
+bp = Blueprint('course_material', __name__, static_folder='../static/react', template_folder='../static/react')
 
-@bp.route('/course-material', methods=['GET', 'POST'])
+@bp.route('/api/course_materials', methods=['GET', 'POST'])
 def course_material():
     if not check_session():
         logger.warning("User not authenticated, redirecting to home.")
-        return redirect(url_for('auth.home'))
+        return jsonify({"error": "Unauthorized access."}), 401
     
     if request.method == 'POST':
         logger.info("Handling POST request for course material.")
@@ -58,22 +58,27 @@ def handle_course_material_post():
 
                         logger.debug(f"Course material submission response: {response.status}")
 
-                        if response.status == "course_material submitted successfully":
+                        if response.status == "course_materials submitted successfully":
                             logger.info(f"Course material data uploaded successfully: {uploaded_file.filename}")
+                            return jsonify({"message": "Course material submitted successfully"}), 200
                         else:
                             logger.error(f"Failed to submit course material: {response.status}")
+                            return jsonify({"error": response.status}), 400
                     else:
                         logger.error(f"File could not be uploaded: {file_save_response.status}")
+                        return jsonify({"error": file_save_response.status}), 400
                 
                 except grpc.RpcError as e:
                     logger.error(f"gRPC error during file upload: {e.code()} - {e.details()}")
 
             else:
                 logger.warning("No file uploaded.")
+                return jsonify({"error": "No file uploaded."}), 400
         else:
             logger.warning("No course_material file found in request.")
+            return jsonify({"error": "No course_material file found in request."}), 400
     
-    return redirect(url_for('course_material.course_material'))
+    return jsonify({"message": "Assignments processed successfully."}), 200
 
 def render_course_material_get():
     try:
@@ -86,7 +91,7 @@ def render_course_material_get():
         elif role == 'student':
             request_data = lms_pb2.CourseMaterial()
         else:
-            return "Unknown role", 400
+            return jsonify({"error": "Unknown role"}), 400
 
         # Send the gRPC request to get course_materials
         response = grpc_client.stub.Get(lms_pb2.GetRequest(
@@ -121,6 +126,6 @@ def render_course_material_get():
 
         logger.info(f"Course materials fetched: {course_materials}")              
                 
-        return render_template('course_material.html', course_materials=course_materials, role=role)
+        return jsonify({"course_materials": course_materials, "role": role}), 200
     except grpc.RpcError as e:
         return grpc_client.handle_grpc_error(e)
