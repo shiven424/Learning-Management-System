@@ -1,149 +1,224 @@
 # Learning Management System (LMS)
 
-This is a microservices-based Learning Management System (LMS) built using gRPC for communication between services, Flask for file uploads and static content, and MongoDB for database storage. The services are containerized using Docker.
-
-## Prerequisites
-
-Before running the system, ensure that you have the following installed:
-
-- Docker (version 19.03.0+)
-- Docker Compose (version 1.25.0+)
-
-## Folder Structure
-
-```
-├── client/
-│   ├── ui.py               # Client UI for interacting with LMS services
-│   ├── templates/          # HTML templates for the Flask UI
-│   ├── static/             # Static files like CSS, JS for the Flask UI
-├── server/
-│   ├── lms_server.py       # gRPC server handling LMS operations
-│   ├── authentication.py   # Authentication and session management
-│   ├── database.py         # MongoDB operations (user registration, assignments, etc.)
-├── proto/
-│   ├── lms.proto           # Protocol Buffers file defining gRPC services
-├── requirements.txt        # Python dependencies
-├── Dockerfile.server       # Dockerfile for the gRPC server
-├── Dockerfile.client       # Dockerfile for the client and Flask app
-├── docker-compose.yml      # Docker Compose configuration
-└── README.md               # Project documentation
-```
-
-## Setup Instructions
-
-### Step 1: Clone the Repository
-
-Start by cloning the repository to your local machine:
-
-```bash
-git clone <repository-url>
-cd <repository-folder>
-```
-
-### Step 2: Build and Run the Containers
-
-Run the following command to build and start all services (gRPC server, client Flask app, and MongoDB) using Docker Compose:
-
-```bash
-docker-compose up --build
-```
-
-This will:
-
-- Build the Docker image for the gRPC server (`lms_server`).
-- Build the Docker image for the client Flask app (`lms_client`).
-- Start a MongoDB container.
-
-### Step 3: Access the Services
-
-Once the containers are running, you can access the services as follows:
-
-- **Flask App (Client UI)**: Navigate to [http://localhost:5000](http://localhost:5000) in your browser.
-- **gRPC Server**: The gRPC server is running on port 50051 for internal communication between services.
-- **MongoDB**: MongoDB is exposed on port 27017.
-
-### Step 4: Interact with the LMS
-
-- **User Registration**: Register users via the client UI or gRPC endpoints.
-- **Submit Assignments**: Students can submit assignments through the client UI or via gRPC.
-- **Grade Assignments**: Teachers can grade assignments via gRPC requests.
-- **View Feedback**: Students and teachers can retrieve feedback on assignments.
-
-### Step 5: Stopping the Containers
-
-To stop all services, press `Ctrl + C` in the terminal running the Docker Compose process, or use the following command in a new terminal:
-
-```bash
-docker-compose down
-```
-
-### Step 6: Cleaning Up
-
-To remove the containers, volumes, and networks created by Docker Compose, run:
-
-```bash
-docker-compose down --volumes --remove-orphans
-```
-
-## File Overview
-
-### Dockerfile.client
-
-Defines the client service (Flask App):
-
-- Installs dependencies from `requirements.txt`.
-- Compiles the gRPC stubs from `proto/lms.proto`.
-- Runs the Flask UI (`ui.py`) on startup.
-
-### Dockerfile.server
-
-Defines the gRPC server service:
-
-- Installs necessary Python dependencies.
-- Compiles gRPC stubs.
-- Starts the gRPC server on port 50051.
-
-### docker-compose.yml
-
-Docker Compose orchestrates the following services:
-
-- `lms_server`: gRPC server for managing LMS functionality.
-- `lms_client`: Flask app acting as a client for the LMS.
-- `mongo`: MongoDB instance for data storage.
-
-### proto/lms.proto
-
-Defines the protocol buffers file used by the gRPC server and client for communication. It includes messages and services for:
-
-- User registration and login.
-- Assignment submission and grading.
-- Feedback management.
-- Course material upload and retrieval.
-
-## Environment Variables
-
-The following environment variables are used in the system:
-
-- `MONGO_URI`: MongoDB connection string. Example: `mongodb://mongo:27017/lms_db`.
-- `FILE_STORAGE_DIR`: Directory to store uploaded files (used in Flask for file uploads).
-
-Both are set by default in `docker-compose.yml`.
-
-## gRPC API Overview
-
-Here is a quick overview of the key gRPC endpoints:
-
-- **Register**: Register a new user (student/teacher).
-- **Login**: Login and receive an authentication token.
-- **Post Assignment**: Submit an assignment.
-- **Get Assignments**: Retrieve assignments (for students or teachers).
-- **Post Feedback**: Submit feedback on assignments.
-- **Get Feedback**: Retrieve feedback for a student or teacher.
-- **Upload Course Material**: Upload teaching materials.
-- **Get Course Materials**: Retrieve course materials by course or teacher.
-
-## License
-
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+This LMS system now includes a **Raft-based consensus protocol** to ensure reliability and consistency across multiple nodes. Below is the detailed documentation of the new changes and how the system leverages Raft for fault tolerance.
 
 ---
+
+## Prerequisites  
+
+Ensure you have the following installed before setting up the system:  
+
+- Docker (version 19.03.0+)  
+- Docker Compose (version 1.25.0+)  
+
+---
+
+## Folder Structure  
+
+```  
+├── client/
+│   ├── ui.py               # Client UI for interacting with LMS services  
+│   ├── templates/          # HTML templates for the Flask UI  
+│   ├── static/             # Static files like CSS, JS for the Flask UI  
+├── server/
+│   ├── lms_server.py       # gRPC server handling LMS operations  
+│   ├── llm_requests.py     # LLM operations via gRPC and external API calls  
+│   ├── authentication.py   # Authentication and session management  
+│   ├── database.py         # MongoDB operations  
+│   ├── raft.py        # Raft consensus implementation  
+├── proto/
+│   ├── lms.proto           # Protocol Buffers file defining gRPC services  
+├── requirements.txt        # Python dependencies  
+├── Dockerfile.server       # Dockerfile for the gRPC server  
+├── Dockerfile.client       # Dockerfile for the Flask client  
+├── Dockerfile.llm          # Dockerfile for LLM server (Gemma 2B model)  
+├── docker-compose.yml      # Docker Compose configuration  
+└── README.md               # Project documentation  
+```
+
+---
+
+## Raft Protocol Overview  
+
+Raft is a **leader-based consensus algorithm** that ensures the nodes in the system agree on the same state, even in the event of failures. In this LMS system, multiple gRPC nodes run as peers to maintain a consistent state (like assignments, grades, and feedback). If a leader node fails, a new leader is elected among the remaining nodes to continue operations seamlessly.  
+
+### Key Concepts in Raft Implementation:  
+
+- **Leader Election:** If a node does not receive heartbeats from the leader within a certain timeout, it starts an election and becomes a candidate.  
+- **Log Replication:** Each operation is logged and replicated across nodes to maintain consistency.  
+- **Fault Tolerance:** The system remains operational as long as the majority of nodes are available.  
+
+---
+
+## Raft Node Implementation  
+
+The **RaftNode** class defines the node's behavior, including election, leader role, log replication, and heartbeat management. Below is a summary of the key components:  
+
+### Key Components:  
+
+1. **Node Roles:**  
+   - **Follower:** Listens for heartbeats and elections.  
+   - **Candidate:** Starts an election if no leader is detected.  
+   - **Leader:** Sends heartbeats and manages log replication.  
+
+2. **Log Management:**  
+   Each node stores a local log for consistency, saved at `/app/logs/raft.log`. The logs are used to replay operations during recovery.  
+
+3. **Heartbeats:**  
+   The leader sends periodic heartbeats to all followers to maintain authority.  
+
+4. **Leader Election:**  
+   If no heartbeats are received, nodes start elections to choose a new leader based on majority votes.  
+
+---
+
+## Environment Variables  
+
+- `SERVER_NAME`: Used to identify the current node.  
+- `MONGO_URI`: MongoDB connection string (default in `docker-compose.yml`).  
+- `FILE_STORAGE_DIR`: Directory for uploaded files.  
+
+---
+
+## Setup Instructions  
+
+### Step 1: Clone the Repository  
+
+```bash  
+git clone <repository-url>  
+cd <repository-folder>  
+```  
+
+### Step 2: Build and Run the Containers  
+
+```bash  
+docker-compose up --build  
+```  
+
+This will:  
+
+- Build and start the gRPC server nodes and Flask client.  
+- Start the MongoDB container and Ollama server.  
+
+---
+
+## Raft Node Configuration  
+
+### Raft Nodes in Docker Compose  
+
+The **`docker-compose.yml`** file sets up multiple gRPC server nodes to act as peers for the Raft protocol. Example configuration:
+
+```yaml  
+version: '3'
+services:
+  lms_server_1:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.server
+    environment:
+      - SERVER_NAME=lms_server_1
+    ports:
+      - "5000:5000"
+
+  lms_server_2:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.server
+    environment:
+      - SERVER_NAME=lms_server_2
+    ports:
+      - "5001:5000"
+
+  lms_server_3:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.server
+    environment:
+      - SERVER_NAME=lms_server_3
+    ports:
+      - "5002:5000"
+```
+
+---
+
+## gRPC Endpoints for Raft  
+
+### 1. **RequestVote** (Start Election)  
+
+A node requests votes from peers during elections.  
+**Request:**  
+```protobuf  
+message VoteRequest {  
+  int32 term = 1;  
+  string candidate_id = 2;  
+  int32 last_log_index = 3;  
+  int32 last_log_term = 4;  
+}  
+```  
+**Response:**  
+```protobuf  
+message VoteResponse {  
+  bool vote_granted = 1;  
+}  
+```  
+
+---
+
+### 2. **AppendEntries** (Heartbeat / Log Replication)  
+
+The leader sends heartbeats or log entries to followers.  
+**Request:**  
+```protobuf  
+message AppendEntriesRequest {  
+  int32 term = 1;  
+  string leader_id = 2;  
+  int32 prev_log_index = 3;  
+  int32 prev_log_term = 4;  
+  repeated LogEntry entries = 5;  
+  int32 leader_commit = 6;  
+}  
+```  
+
+**Response:**  
+```protobuf  
+message AppendEntriesResponse {  
+  bool success = 1;  
+}  
+```  
+
+---
+
+## Accessing the Services  
+
+- **Client UI:** [http://localhost:5000](http://localhost:5000)  
+- **gRPC Servers:** Accessible on ports 5000, 5001, 5002.  
+
+---
+
+## Stopping the Containers  
+
+To stop all services:  
+
+```bash  
+docker-compose down  
+```  
+
+---
+
+## Cleaning Up  
+
+To remove containers, volumes, and networks:  
+
+```bash  
+docker-compose down --volumes --remove-orphans  
+```  
+
+---
+
+## License  
+
+This project is licensed under the MIT License. See the `LICENSE` file for details.  
+
+---
+
+By incorporating the **Raft consensus algorithm**, the LMS ensures high availability and consistent state management across nodes, making it robust against failures.

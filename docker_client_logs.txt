@@ -1,0 +1,100 @@
+lms_client  | 2024-11-15 17:53:54,996 - INFO - Searching for leader...
+lms_client  | 2024-11-15 17:53:55,011 - WARNING - Failed to contact peer lms_server_1:5000: <_InactiveRpcError of RPC that terminated with:
+lms_client  | 	status = StatusCode.UNAVAILABLE
+lms_client  | 	details = "failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.7:5000: Failed to connect to remote host: Connection refused"
+lms_client  | 	debug_error_string = "UNKNOWN:failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.7:5000: Failed to connect to remote host: Connection refused {created_time:"2024-11-15T17:53:55.01066564+00:00", grpc_status:14}"
+lms_client  | >
+lms_client  | 2024-11-15 17:53:55,015 - WARNING - Failed to contact peer lms_server_2:5000: <_InactiveRpcError of RPC that terminated with:
+lms_client  | 	status = StatusCode.UNAVAILABLE
+lms_client  | 	details = "failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.6:5000: Failed to connect to remote host: Connection refused"
+lms_client  | 	debug_error_string = "UNKNOWN:failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.6:5000: Failed to connect to remote host: Connection refused {grpc_status:14, created_time:"2024-11-15T17:53:55.014821175+00:00"}"
+lms_client  | >
+lms_client  | 2024-11-15 17:53:55,019 - WARNING - Failed to contact peer lms_server_3:5000: <_InactiveRpcError of RPC that terminated with:
+lms_client  | 	status = StatusCode.UNAVAILABLE
+lms_client  | 	details = "failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.5:5000: Failed to connect to remote host: Connection refused"
+lms_client  | 	debug_error_string = "UNKNOWN:failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.5:5000: Failed to connect to remote host: Connection refused {created_time:"2024-11-15T17:53:55.019105616+00:00", grpc_status:14}"
+lms_client  | >
+lms_client  | 2024-11-15 17:53:55,020 - ERROR - Leader not found. Retrying with backoff...
+lms_client  | 2024-11-15 17:53:56,022 - INFO - Searching for leader...
+lms_client  | 2024-11-15 17:53:56,026 - WARNING - Failed to contact peer lms_server_1:5000: <_InactiveRpcError of RPC that terminated with:
+lms_client  | 	status = StatusCode.UNAVAILABLE
+lms_client  | 	details = "failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.7:5000: Failed to connect to remote host: Connection refused"
+lms_client  | 	debug_error_string = "UNKNOWN:failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.7:5000: Failed to connect to remote host: Connection refused {created_time:"2024-11-15T17:53:56.025856112+00:00", grpc_status:14}"
+lms_client  | >
+lms_client  | 2024-11-15 17:53:56,029 - WARNING - Failed to contact peer lms_server_2:5000: <_InactiveRpcError of RPC that terminated with:
+lms_client  | 	status = StatusCode.UNAVAILABLE
+lms_client  | 	details = "failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.6:5000: Failed to connect to remote host: Connection refused"
+lms_client  | 	debug_error_string = "UNKNOWN:failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.6:5000: Failed to connect to remote host: Connection refused {grpc_status:14, created_time:"2024-11-15T17:53:56.028761412+00:00"}"
+lms_client  | >
+lms_client  | 2024-11-15 17:53:56,031 - WARNING - Failed to contact peer lms_server_3:5000: <_InactiveRpcError of RPC that terminated with:
+lms_client  | 	status = StatusCode.UNAVAILABLE
+lms_client  | 	details = "failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.5:5000: Failed to connect to remote host: Connection refused"
+lms_client  | 	debug_error_string = "UNKNOWN:failed to connect to all addresses; last error: UNKNOWN: ipv4:172.18.0.5:5000: Failed to connect to remote host: Connection refused {created_time:"2024-11-15T17:53:56.031408089+00:00", grpc_status:14}"
+lms_client  | >
+lms_client  | 2024-11-15 17:53:56,032 - ERROR - Leader not found. Retrying with backoff...
+lms_client  | 2024-11-15 17:53:57,333 - INFO - Searching for leader...
+lms_client  | 2024-11-15 17:53:57,339 - INFO - lms_server_1:5000 is not the leader.
+lms_client  | 2024-11-15 17:53:57,343 - INFO - lms_server_2:5000 is not the leader.
+lms_client  | 2024-11-15 17:53:57,347 - INFO - lms_server_3:5000 is not the leader.
+lms_client  | 2024-11-15 17:53:57,348 - ERROR - Leader not found. Retrying with backoff...
+lms_client  | 2024-11-15 17:53:59,040 - INFO - Searching for leader...
+lms_client  | 2024-11-15 17:53:59,042 - INFO - lms_server_1:5000 is not the leader.
+lms_client  | 2024-11-15 17:53:59,045 - INFO - lms_server_2:5000 is not the leader.
+lms_client  | 2024-11-15 17:53:59,048 - INFO - lms_server_3:5000 is not the leader.
+lms_client  | 2024-11-15 17:53:59,048 - ERROR - Leader not found. Retrying with backoff...
+lms_client  | 2024-11-15 17:54:01,247 - INFO - Searching for leader...
+lms_client  | 2024-11-15 17:54:01,251 - INFO - lms_server_1:5000 is not the leader.
+lms_client  | 2024-11-15 17:54:01,255 - INFO - lms_server_2:5000 is not the leader.
+lms_client  | 2024-11-15 17:54:01,258 - INFO - lms_server_3:5000 is not the leader.
+lms_client  | 2024-11-15 17:54:01,259 - ERROR - Leader not found. Retrying with backoff...
+lms_client  | 2024-11-15 17:54:04,118 - INFO - Searching for leader...
+lms_client  | 2024-11-15 17:54:04,121 - INFO - lms_server_1:5000 is not the leader.
+lms_client  | 2024-11-15 17:54:04,124 - INFO - Current leader found: lms_server_2:5000
+lms_client  | 2024-11-15 17:54:04,128 - INFO - Client connected to LMS Server Leader
+lms_client  |  * Serving Flask app 'app'
+lms_client  |  * Debug mode: off
+lms_client  | 2024-11-15 17:54:04,155 - INFO - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+lms_client  |  * Running on all addresses (0.0.0.0)
+lms_client  |  * Running on http://127.0.0.1:5000
+lms_client  |  * Running on http://172.18.0.3:5000
+lms_client  | 2024-11-15 17:54:04,155 - INFO - [33mPress CTRL+C to quit[0m
+lms_client  | 2024-11-15 17:54:09,708 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:09] "GET /login HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:09,918 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:09] "[36mGET /static/js/main.32a8e7b6.js HTTP/1.1[0m" 304 -
+lms_client  | 2024-11-15 17:54:09,948 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:09] "[36mGET /static/css/main.9c28d2c7.css HTTP/1.1[0m" 304 -
+lms_client  | 2024-11-15 17:54:10,256 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:10] "[31m[1mGET /api/session HTTP/1.1[0m" 401 -
+lms_client  | 2024-11-15 17:54:10,481 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:10] "[31m[1mGET /api/session HTTP/1.1[0m" 401 -
+lms_client  | 2024-11-15 17:54:10,487 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:10] "[36mGET /favicon.ico HTTP/1.1[0m" 304 -
+lms_client  | 2024-11-15 17:54:10,488 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:10] "[36mGET /manifest.json HTTP/1.1[0m" 304 -
+lms_client  | 2024-11-15 17:54:10,519 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:10] "[36mGET /logo192.png HTTP/1.1[0m" 304 -
+lms_client  | 2024-11-15 17:54:12,957 - INFO - lms_server_2:5000
+lms_client  | 2024-11-15 17:54:12,962 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:12] "[31m[1mPOST /api/login HTTP/1.1[0m" 401 -
+lms_client  | 2024-11-15 17:54:14,538 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:14] "[31m[1mGET /api/session HTTP/1.1[0m" 401 -
+lms_client  | 2024-11-15 17:54:20,237 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:20] "POST /api/register HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:20,297 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:20] "[31m[1mGET /api/session HTTP/1.1[0m" 401 -
+lms_client  | 2024-11-15 17:54:21,444 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:21] "[31m[1mGET /api/session HTTP/1.1[0m" 401 -
+lms_client  | 2024-11-15 17:54:25,521 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:25] "POST /api/register HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:25,575 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:25] "[31m[1mGET /api/session HTTP/1.1[0m" 401 -
+lms_client  | 2024-11-15 17:54:27,814 - INFO - lms_server_2:5000
+lms_client  | 2024-11-15 17:54:27,817 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:27] "POST /api/login HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:27,896 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:27] "GET /api/session HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:29,326 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:29] "GET /api/session HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:29,333 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:29] "GET /api/session HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:29,389 - INFO - Teachers fetched via gRPC: [{'username': '222', 'name': ''}]
+lms_client  | 2024-11-15 17:54:29,391 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:29] "GET /api/assignments HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:29,429 - INFO - Teachers fetched via gRPC: [{'username': '222', 'name': ''}]
+lms_client  | 2024-11-15 17:54:29,431 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:29] "GET /api/assignments HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:38,674 - INFO - Assignment data uploaded successfully: Data Mining.pdf
+lms_client  | 2024-11-15 17:54:38,674 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:38] "POST /api/assignments HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:38,694 - INFO - Teachers fetched via gRPC: [{'username': '222', 'name': ''}]
+lms_client  | 2024-11-15 17:54:38,697 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:38] "GET /api/assignments HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:42,271 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:42] "GET /api/session HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:45,988 - INFO - lms_server_2:5000
+lms_client  | 2024-11-15 17:54:45,993 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:45] "POST /api/login HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:46,109 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:46] "GET /api/session HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:47,360 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:47] "GET /api/session HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:47,369 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:47] "GET /api/session HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:47,396 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:47] "GET /api/assignments HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:47,421 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:47] "GET /api/assignments HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:51,178 - WARNING - Failed to post feedback: Assignment grade updated successfully
+lms_client  | 2024-11-15 17:54:51,178 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:51] "POST /api/assignments HTTP/1.1" 200 -
+lms_client  | 2024-11-15 17:54:51,202 - INFO - 172.18.0.1 - - [15/Nov/2024 17:54:51] "GET /api/assignments HTTP/1.1" 200 -

@@ -6,8 +6,18 @@
 <!-- Assignment Submission Form for Students -->
 {% if role == 'student' %}
 <form method="POST" enctype="multipart/form-data">
+    <label for="teacher">Select Teacher:</label><br>
+    <select name="teacher" id="teacher" required>
+        <option value="">--Select a teacher--</option>
+        {% for teacher in teachers %}
+        <option value="{{ teacher.username }}">{{ teacher.username }}</option>
+        {% endfor %}
+    </select>
+    <br>
     <label for="assignment">Submit Assignment:</label>
+    <br>
     <input type="file" name="assignment" id="assignment" required>
+    <br>
     <button type="submit">Submit</button>
 </form>
 {% endif %}
@@ -25,25 +35,66 @@
     {% for assignment in assignments %}
     <li>
         <!-- Make the file name clickable to download -->
-        <a href="{{ url_for('download_file', file_path=assignment.file_path) }}">{{ assignment.filename }}</a>
+        <a href="{{ url_for('file_transfer.download_file', file_path=assignment.file_path) }}">{{ assignment.filename }}</a>
+
+        <!-- Show Grade and Feedback if available -->
+        <div>
+            <strong>Grade:</strong> 
+            {% if assignment.grade %}
+                {{ assignment.grade }}
+            {% else %}
+                Not graded yet
+            {% endif %}
+        </div>
         
-        <!-- Grading and Feedback Options -->
+        <div>
+            <strong>Feedback:</strong> 
+            {% if assignment.feedback_text %}
+                {{ assignment.feedback_text }}  <!-- This is where the feedback is shown -->
+            {% else %}
+                No feedback provided
+            {% endif %}
+        </div>
+
+        <div></div>
+            <strong>Submission Date:</strong> 
+            {% if assignment.submission_date %}
+                {{ assignment.submission_date }}  <!-- This is where the feedback is shown -->
+            {% else %}
+                No submission_date provided
+            {% endif %}
+        </div>
+
         {% if role == 'teacher' %}
-        <form method="POST" action="{{ url_for('assignments') }}">
+        <div>
+            <strong>Student:</strong> 
+                {{ assignment.student_name }}
+        </div>
+        {% endif %}
+        {% if role == 'student' %}
+        <div>
+            <strong>Teacher:</strong> 
+                {{ assignment.teacher_name }}
+        </div>
+        {% endif %}
+
+        <!-- Grading and Feedback Options for Teachers -->
+        {% if role == 'teacher' %}
+        <form method="POST" action="{{ url_for('assignment.assignments') }}">
             <div>
                 <input type="hidden" name="assignment_id" value="{{ assignment.assignment_id }}">
                 
                 <label for="grade_{{ assignment.assignment_id }}">Grade:</label>
                 <select name="grade_{{ assignment.assignment_id }}" id="grade_{{ assignment.assignment_id }}">
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                    <option value="C">C</option>
-                    <option value="D">D</option>
-                    <option value="F">F</option>
+                    <option value="A" {% if assignment.grade == 'A' %}selected{% endif %}>A</option>
+                    <option value="B" {% if assignment.grade == 'B' %}selected{% endif %}>B</option>
+                    <option value="C" {% if assignment.grade == 'C' %}selected{% endif %}>C</option>
+                    <option value="D" {% if assignment.grade == 'D' %}selected{% endif %}>D</option>
+                    <option value="F" {% if assignment.grade == 'F' %}selected{% endif %}>F</option>
                 </select>
 
                 <label for="feedback_{{ assignment.assignment_id }}">Feedback:</label>
-                <textarea name="feedback_{{ assignment.assignment_id }}" id="feedback_{{ assignment.assignment_id }}" rows="3" cols="50"></textarea>
+                <textarea name="feedback_{{ assignment.assignment_id }}" id="feedback_{{ assignment.assignment_id }}" rows="3" cols="50">{{ assignment.feedback }}</textarea>
 
                 <button type="submit">Submit Grade & Feedback</button>
             </div>

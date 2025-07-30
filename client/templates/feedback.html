@@ -3,13 +3,24 @@
 {% block content %}
 <h2>Feedback</h2>
 
-<!-- Feedback Submission Form -->
+<!-- Feedback Submission Form (Visible Only to Teachers) -->
+{% if role == 'teacher' %}
 <form method="POST">
+    <label for="student">Select Student:</label><br>
+    <select name="student" id="student" required>
+        <option value="">--Select a Student--</option>
+        {% for student in students %}
+        <option value="{{ student.username }}">{{ student.username }}</option>
+        {% endfor %}
+    </select>
+    <br><br>
+
     <label for="feedback">Provide Feedback:</label><br>
     <textarea name="feedback" id="feedback" rows="4" required placeholder="Enter your feedback here..."></textarea>
     <br>
     <button type="submit">Submit</button>
 </form>
+{% endif %}
 
 <!-- Display Submission Feedback -->
 {% if error %}
@@ -21,15 +32,22 @@
 <!-- List of Submitted Feedback -->
 <h3>Previous Feedback:</h3>
 <ul style="list-style-type: none; padding: 0;">
-    {% for item in feedback %}
+    {% for item in feedbacks %}
     <li style="border-bottom: 1px solid #ccc; padding: 10px 0;">
-        <strong>Feedback:</strong> {{ item.data }}<br>
-        {% if item.date %}
-        <em>Submitted on: {{ item.date }}</em>
+        <strong>Feedback:</strong> {{ item.feedback_text }}<br>
+        {% if item.submission_date %}
+        <em>Submitted on: {{ item.submission_date }}</em>
         {% endif %}
-        <!-- Optional: Display author if available -->
-        {% if item.author %}
-        <br><small>By: {{ item.author }}</small>
+        <!-- Display student and teacher name if available -->
+        {% if role == 'teacher' %}
+            {% if item.student_name %}
+            <br><small>Student: {{ item.student_name }}</small>
+            {% endif %}
+        {% endif %}
+        {% if role == 'student' %}
+            {% if item.teacher_name %}
+            <br><small>Teacher: {{ item.teacher_name }}</small>
+            {% endif %}
         {% endif %}
     </li>
     {% else %}

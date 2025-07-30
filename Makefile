@@ -47,15 +47,22 @@ restart: stop up
 # Display logs of the running services
 .PHONY: logs
 logs:
-	$(DOCKER_COMPOSE) logs -f lms_client lms_server
+	$(DOCKER_COMPOSE) logs -f lms_client lms_server_1 lms_server_2 lms_server_3  ollama --tail 100
+
+# Open the Docker log file
+.PHONY: raft-log
+raft-log:
+	@echo "Opening /app/logs/raft.log in lms_server container..."
+	$(DOCKER_COMPOSE) exec lms_server_1 /bin/bash -c "cat /app/logs/raft.log"
 
 .PHONY: rebuild-server
 rebuild-server: build
-	$(DOCKER_COMPOSE) up -d lms_server
+	$(DOCKER_COMPOSE) up -d lms_server_1 lms_server_2 lms_server_3
 
-# Rebuild and redeploy the client
+# Rebuild and redeploy the client --no-cache
 .PHONY: rebuild-client
 rebuild-client: build
+	$(DOCKER_COMPOSE) build lms_client
 	$(DOCKER_COMPOSE) up -d lms_client
 
 

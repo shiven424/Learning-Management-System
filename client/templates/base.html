@@ -14,25 +14,27 @@
         {% if session.get('logged_in') %}
         <div style="text-align: right;">
             <span>Welcome, {{ session.get('username', 'Guest') }}!</span>
-            <a href="{{ url_for('logout') }}">Logout</a>
+            <a href="{{ url_for('auth.logout') }}">Logout</a>
         </div>
         {% endif %}
         <nav>
-            <a href="{{ url_for('dashboard') }}">Dashboard</a>
+            <a href="{{ url_for('dashboard.dashboard') }}">Dashboard</a>
             <!-- Show options based on the user's role -->
             {% if session.get('role') == 'student' %}
-                <a href="{{ url_for('assignments') }}">Upload Assignments</a>
-                <a href="{{ url_for('feedback') }}">View Feedback</a>
-                <a href="{{ url_for('course_material') }}">View Course Materials</a>
+                <a href="{{ url_for('assignment.assignments') }}">Upload Assignments</a>
+                <a href="{{ url_for('feedback.feedback') }}">View Feedback</a>
+                <a href="{{ url_for('course_material.course_material') }}">View Course Materials</a>
+                <a href="{{ url_for('forum.forum') }}">Ask a Query</a>
             {% elif session.get('role') == 'teacher' %}
-                <a href="{{ url_for('assignments') }}">View Assignments</a>
-                <a href="{{ url_for('feedback') }}">Upload Feedback</a>
-                <a href="{{ url_for('course_material') }}">Upload Course Materials</a>
+                <a href="{{ url_for('assignment.assignments') }}">View Assignments</a>
+                <a href="{{ url_for('feedback.feedback') }}">Upload Feedback</a>
+                <a href="{{ url_for('course_material.course_material') }}">Upload Course Materials</a>
+                <a href="{{ url_for('forum.forum') }}">View Queries</a>
             {% endif %}
             
             {% if not session.get('logged_in') %}
-                <a href="{{ url_for('register') }}">Register</a>
-                <a href="{{ url_for('login') }}">Login</a>
+                <a href="{{ url_for('auth.register') }}">Register</a>
+                <a href="{{ url_for('auth.login') }}">Login</a>
             {% endif %}
         </nav>
     </header>
@@ -40,5 +42,6 @@
     <main>
         {% block content %}{% endblock %}
     </main>
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
 </body>
 </html>
